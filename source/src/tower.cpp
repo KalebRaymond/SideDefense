@@ -9,10 +9,14 @@ Tower::Tower()
 
 Tower::Tower(Graphics &graphics, std::string filepath, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint, int timeToUpdate, int maxHealth)
     :   AnimatedSprite(graphics, filepath, sourceX, sourceY, width, height, spawnPoint.x, spawnPoint.y, timeToUpdate),
+        _startingX(spawnPoint.x),
+        _startingY(spawnPoint.y),
         _maxHealth(maxHealth),
         _currentHealth(maxHealth),
         _fireCoolDown(0),
-        _lastFireTime(0)
+        _lastFireTime(0),
+        _dragged(false),
+        _placed(false)
 {
 
 }
@@ -60,6 +64,21 @@ void Tower::handleMouseEvent(int mouseX, int mouseY)
     Sprite::update();
 }
 
+void Tower::setCurrentHealth(int hp)
+{
+    this->_currentHealth = hp;
+}
+
+void Tower::reduceCurrentHealth(int dmg)
+{
+    this->_currentHealth -= dmg;
+}
+
+int Tower::getCurrentHealth()
+{
+    return this->_currentHealth;
+}
+
 //BulletTower class
 
 BulletTower::BulletTower()
@@ -68,9 +87,7 @@ BulletTower::BulletTower()
 }
 
 BulletTower::BulletTower(Graphics &graphics, Vector2 spawnPoint)
-    :   Tower(graphics, "content/sprites/bulletTower.png", 0, 0, 16, 16, spawnPoint, 100, 5),
-        _startingX(spawnPoint.x),
-        _startingY(spawnPoint.y)
+    :   Tower(graphics, "content/sprites/bulletTower.png", 0, 0, 16, 16, spawnPoint, 100, 5)
 {
     this->_fireCoolDown = 1000;
     this->_lastFireTime = -1;
@@ -80,14 +97,6 @@ BulletTower::BulletTower(Graphics &graphics, Vector2 spawnPoint)
 
 void BulletTower::update(int elapsedTime, Graphics &graphics)
 {
-    //Destroy if health is 0
-    if(this->_dragged)
-    {
-        int mouseX, mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
-        this->_x = mouseX - graphics.getCameraOffsetX() - 16;
-        this->_y = mouseY - graphics.getCameraOffsetY() - 16;
-    }
     Sprite::update();
 }
 
@@ -134,9 +143,7 @@ RocketTower::RocketTower()
 }
 
 RocketTower::RocketTower(Graphics &graphics, Vector2 spawnPoint)
-    :   Tower(graphics, "content/sprites/rocketTower.png", 0, 0, 16, 16, spawnPoint, 100, 5),
-        _startingX(spawnPoint.x),
-        _startingY(spawnPoint.y)
+    :   Tower(graphics, "content/sprites/rocketTower.png", 0, 0, 16, 16, spawnPoint, 100, 5)
 {
     this->_fireCoolDown = 500;
     this->_lastFireTime = -1;
@@ -146,7 +153,7 @@ RocketTower::RocketTower(Graphics &graphics, Vector2 spawnPoint)
 
 void RocketTower::update(int elapsedTime, Graphics &graphics)
 {
-
+    Sprite::update();
 }
 
 void RocketTower::draw(Graphics &graphics)

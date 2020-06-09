@@ -1,4 +1,5 @@
 #include "enemy.h"
+#include "tower.h"
 #include "graphics.h"
 
 Enemy::Enemy()
@@ -12,7 +13,8 @@ Enemy::Enemy(Graphics &graphics, std::string filepath, int sourceX, int sourceY,
         _dy(0),
         _direction(NONE),
         _maxHealth(0),
-        _currentHealth(0)
+        _currentHealth(0),
+        _damage(0)
 {
 
 }
@@ -57,6 +59,7 @@ BasicEnemy::BasicEnemy(Graphics &graphics, int spawnX, int spawnY)
 {
     this->_maxHealth = 50;
     this->_currentHealth = 50;
+    this->_damage = 1;
     this->_dx = 0.05;
     this->_dy = 0;
     this->_direction = RIGHT;
@@ -93,4 +96,12 @@ void BasicEnemy::setupAnimation()
 {
     this->addAnimation( 4, 0, 0, "WalkRight", 16, 32, Vector2(0, 0) );
     this->addAnimation( 5, 0, 36, "AttackRight", 16, 32, Vector2(0, 0) ); //Looks like he's moonwalking
+}
+
+void BasicEnemy::attack(Tower* tower)
+{
+    if(this->getFrameIndex() == 3)
+    {
+        tower->reduceCurrentHealth(this->_damage);
+    }
 }
