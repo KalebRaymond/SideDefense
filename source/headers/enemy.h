@@ -6,6 +6,7 @@
 #include <string>
 
 class Graphics;
+class Tower;
 
 class Enemy : public AnimatedSprite
 {
@@ -27,12 +28,16 @@ class Enemy : public AnimatedSprite
         //but if they do in the future, this needs to be a virtual void function.
         void handleProjectileCollision(int damage);
 
+        /* attack will at the very least reduce tower's _currentHealth by this->_damage
+        */
+        virtual void attack(Tower* tower) = 0;
+
     protected:
         float _dx, _dy;
         Direction _direction;
         int _maxHealth;
         int _currentHealth;
-        //Enemy* _targetTower;
+        int _damage;
 };
 
 class BasicEnemy : public Enemy
@@ -49,7 +54,7 @@ class BasicEnemy : public Enemy
         void animationDone(std::string currentAnimation);
         void setupAnimation();
 
-        //Move
+        void attack(Tower* tower);
 
     private:
         float _startingX, _startingY;

@@ -28,13 +28,17 @@ class Tower : public AnimatedSprite
         bool pointCollides(int x, int y);
         virtual void handleMouseEvent(int mouseX, int mouseY);
 
-        //get health, get maxHealth
+        void setCurrentHealth(int hp);
+        void reduceCurrentHealth(int dmg);
+        int getCurrentHealth();
 
     protected:
         //Direction _direction
+        float _startingX, _startingY; //I'm not totally sure these even do anything
         int _maxHealth;
         int _currentHealth;
         bool _dragged;
+        bool _placed;
 
         //_fireCoolDown and _lastFireTime are measured in milliseconds
         int _fireCoolDown;
@@ -61,8 +65,6 @@ class BulletTower : public Tower
         void handleMouseEvent(int mouseX, int mouseY);
 
     private:
-        //Why aren't these in Projectile?
-        float _startingX, _startingY;
 };
 
 
@@ -83,7 +85,6 @@ class RocketTower : public Tower
         void handleMouseEvent(int mouseX, int mouseY);
 
     private:
-        float _startingX, _startingY;
 };
 
 #endif // TOWER_H
