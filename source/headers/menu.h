@@ -12,11 +12,14 @@ class Menu
         Menu();
         Menu(Graphics &graphics);
 
-        void update(int elapsedTime);
+        void update(int elapsedTime, Input &input);
         void draw(Graphics &graphics);
 
+        Tower* getTower(Graphics &graphics, int mouseX, int mouseY);
+
     protected:
-        std::vector< MenuItem > _menuItems;
+        std::vector<MenuItem> _menuItems;
+        std::vector<TowerMenuItem> _towerMenuItems;
 
 };
 #endif // MENU_H
