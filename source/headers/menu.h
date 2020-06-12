@@ -15,7 +15,7 @@ class Menu
         void update(int elapsedTime, Input &input);
         void draw(Graphics &graphics);
 
-        Tower* getTower(Graphics &graphics, int mouseX, int mouseY);
+        Tower* getTower(Graphics &graphics, int mouseX, int mouseY, int money);
 
     protected:
         std::vector<MenuItem> _menuItems;

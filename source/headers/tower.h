@@ -21,6 +21,8 @@ class Tower : public AnimatedSprite
 
         bool getDragged();
         void setDragged(bool dragged);
+        bool getPlaced();
+        void setPlaced(bool placed);
 
         //All towers react to mouse-overs the same way. The user can click and drag
         //a tower to place it in the level (if enough cash)...
@@ -31,6 +33,7 @@ class Tower : public AnimatedSprite
         void setCurrentHealth(int hp);
         void reduceCurrentHealth(int dmg);
         int getCurrentHealth();
+        int getPrice();
 
     protected:
         //Direction _direction
@@ -43,6 +46,8 @@ class Tower : public AnimatedSprite
         //_fireCoolDown and _lastFireTime are measured in milliseconds
         int _fireCoolDown;
         int _lastFireTime;
+
+        int _price;
 
 };
 

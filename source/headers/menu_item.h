@@ -50,12 +50,20 @@ class TowerMenuItem : public MenuItem
 {
     public:
         TowerMenuItem();
-        TowerMenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location);
+        TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location);
 
         void update(int elapsedTime, Input &input);
         void onHover();
 
-        Tower* createTower(Graphics &graphics, int mouseX, int mouseY);
+        const int inline getPrice() const
+        {
+            return this->_price;
+        }
+
+        Tower* createTower(Graphics &graphics, int mouseX, int mouseY, int money);
+
+    private:
+        int _price;
 };
 
 #endif // MENU_ITEM_H

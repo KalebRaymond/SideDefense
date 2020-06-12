@@ -15,18 +15,13 @@ class Projectile : public AnimatedSprite
         Projectile(Graphics &graphics, std::string filepath, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint, int timeToUpdate);
         ~Projectile();
 
-        virtual void draw(Graphics &graphics);
+        void draw(Graphics &graphics);
         virtual void update(float elapsedTime);
 
-        //Direction might be different for certain projectiles (homing missiles)
-        //Make a namesapce with LEFT, RIGHT, UPRIGHT etc?
-        virtual void moveDirection(float elapsedTime);
+        void moveDirection(float elapsedTime);
         virtual void setDirection(Direction direction);
 
         int getDamage();
-
-        //virtual void handleEnemyCollisions(std::vector<Enemy*> enemies)
-        //virtual void handleTileCollisions(std::vector<Tile> tiles)
 
     protected:
         float _dx, _dy;
@@ -45,16 +40,34 @@ class Bullet : public Projectile
         Bullet(Graphics &graphics, Vector2 spawnPoint);
         ~Bullet();
 
-        void draw(Graphics &graphics);
         void update(float elapsedTime);
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
 
-        void moveDirection(float elapsedTime);
+        void setDirection(Direction direction);
+};
+
+/*  Rocket class
+*   Used with RocketTower
+*/
+class Rocket : public Projectile
+{
+    public:
+        Rocket();
+        Rocket(Graphics &graphics, Vector2 spawnPoint);
+
+        float getAngleToTarget();
+
+        void update(float elapsedTime);
+
+        void animationDone(std::string currentAnimation);
+        void setupAnimation();
+
         void setDirection(Direction direction);
 
-    protected:
+    private:
+        int _targetX, _targetY;
 };
 
 #endif // PROJECTILE_H
