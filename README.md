@@ -7,3 +7,4 @@ Minor bugs/changes:
 - globals::SCREEN_WIDTH used in places where globals::GAME_VIEWPORT_W is more appropriate  
 - Phase out Vector2  
 - Level::update is very inefficient - bad runtime, unecessary vector accesses, bad memory management (RAII)
+- Add documentation  
