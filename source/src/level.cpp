@@ -246,68 +246,11 @@ void Level::loadMap(std::string mapName, Graphics& graphics)
                         {
                             this->_enemySpawnPoint = Vector2(std::ceil(x) * globals::SPRITE_SCALE, std::ceil(y) * globals::SPRITE_SCALE);
                         }
-                        else if(ss.str() == "bulletTower")
-                        {
-                            this->_bulletSpawnPoint = Vector2(std::ceil(x) * globals::SPRITE_SCALE, std::ceil(y) * globals::SPRITE_SCALE);
-                        }
-                        else if(ss.str() == "rocketTower")
-                        {
-                            this->_rocketSpawnPoint = Vector2(std::ceil(x) * globals::SPRITE_SCALE, std::ceil(y) * globals::SPRITE_SCALE);
-                        }
 
                         pObject = pObject->NextSiblingElement("object");
                     }
                 }
 
-            }
-
-            else if(ss.str() == "door")
-            {
-                XMLElement* pObject = pObjectGroup->FirstChildElement("object");
-                if(pObject != NULL)
-                {
-                    while(pObject)
-                    {
-                        float x = pObject->FloatAttribute("x");
-                        float y = pObject->FloatAttribute("y");
-                        float w = pObject->FloatAttribute("width");
-                        float h = pObject->FloatAttribute("height");
-                        Rectangle rect = Rectangle(x, y, w, h);
-
-                        XMLElement* pProperties = pObject->FirstChildElement("properties");
-						if (pProperties != NULL)
-                        {
-							while (pProperties)
-                            {
-								XMLElement* pProperty = pProperties->FirstChildElement("property");
-								if (pProperty != NULL)
-								{
-									while (pProperty)
-									{
-										const char* name = pProperty->Attribute("name");
-										std::stringstream ss;
-										ss << name;
-										if (ss.str() == "destination")
-										{
-											const char* value = pProperty->Attribute("value");
-											std::stringstream ss2;
-											ss2 << value;
-											Door door = Door(rect, ss2.str());
-											this->_doorList.push_back(door);
-										}
-
-										pProperty = pProperty->NextSiblingElement("property");
-									}
-
-								pProperties = pProperties->NextSiblingElement("properties");
-
-								}
-							}
-						}
-
-                        pObject = pObject->NextSiblingElement("object");
-                    }
-                }
             }
 
             pObjectGroup = pObjectGroup->NextSiblingElement("objectgroup");
@@ -315,7 +258,7 @@ void Level::loadMap(std::string mapName, Graphics& graphics)
     }
 }
 
-void Level::update(Graphics &graphics, int elapsedTime, Player &player)
+void Level::update(Graphics &graphics, int elapsedTime)
 {
     /*          Goal structure
     *   Towers:         Tower - Tower
@@ -332,11 +275,13 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
     *
     *   Tiles:          Tile - Tile
     */
-    //O(n^2)... I wonder if this whole update function can be optimized
+    //O(n^2)... I wonder if this whole update function can be optimized.
+    //Is it even a bad thing for it to be O(n^2)? is it worth it to strive
+    //for a better run time? Acceptable practice for a game? Google that.
     //Update towers
     for(int i = 0; i < this->_towers.size(); ++i)
     {
-        this->_towers.at(i)->update(elapsedTime, graphics);
+        this->_towers.at(i)->update(elapsedTime, graphics, &this->_enemies);
 
         //If tower is being dragged, update position based on mouse position
         if(this->_towers.at(i)->getDragged())
@@ -351,9 +296,9 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
             for(int j = 0; j < this->_floors.size(); ++j)
             {
                 //Add 32px padding above and on sides of floor
-                Rectangle floorHitBox(  this->_floors.at(j).getLeft() - 32,
+                Rectangle floorHitBox(  this->_floors.at(j).getLeft(),
                                         this->_floors.at(j).getTop() - 32,
-                                        this->_floors.at(j).getWidth() +  64,
+                                        this->_floors.at(j).getWidth(),
                                         this->_floors.at(j).getHeight() + 32);
 
                 Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY(), 0, 0);
@@ -363,6 +308,11 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
                     //Place tower on top of floor
                     this->_towers.at(i)->setX( ((mouseX / 32) * 32) - graphics.getCameraOffsetX());
                     this->_towers.at(i)->setY( this->_floors.at(j).getTop() - 32 );
+                    this->_towers.at(i)->setPositionValid(true);
+                }
+                else
+                {
+                    this->_towers.at(i)->setPositionValid(false);
                 }
             }
 
@@ -396,7 +346,7 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
             //Handle mouse going outside of game viewport
             if(this->_towers.at(i)->getY() > globals::GAME_VIEWPORT_H - 64)
             {
-                this->_towers.at(i)->setY(globals::GAME_VIEWPORT_H - 96);
+                //this->_towers.at(i)->setY(globals::GAME_VIEWPORT_H - 96);
             }
         }
         else if(!this->_towers.at(i)->getDragged())
@@ -467,9 +417,9 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
     for(int i = 0; i < this->_projectiles.size(); ++i)
     {
         //Replace _projectiles.at(i) with a pointer/reference?
-        this->_projectiles.at(i)->update(elapsedTime);
-        //If bullet goes out of range, delete it. Eventually replace this code with collision handling
-        if(this->_projectiles.at(i)->getX() < 100)
+        this->_projectiles.at(i)->update(elapsedTime, &this->_enemies);
+        //Destroy projectile if it hits the left wall. Should actually handle collisions (rockets explode)
+        if(this->_projectiles.at(i)->getX() < 32)
         {
             //Make this a function like deleteTower()
             delete this->_projectiles.at(i);
@@ -481,14 +431,23 @@ void Level::update(Graphics &graphics, int elapsedTime, Player &player)
         {
             for(int j = 0; j < this->_enemies.size(); ++j)
             {
-                if(this->_projectiles.at(i)->getBoundingBox().collidesWith( this->_enemies.at(j)->getBoundingBox() ))
+                Rectangle enemyCenter = {   this->_enemies.at(j)->getBoundingBox().getCenterX() - 3,
+                                            this->_enemies.at(j)->getBoundingBox().getTop(),
+                                            6,
+                                            this->_enemies.at(j)->getBoundingBox().getTop(),};
+
+                if(this->_projectiles.at(i)->getBoundingBox().collidesWith( enemyCenter ))
                 {
                     this->_enemies.at(j)->handleProjectileCollision( this->_projectiles.at(i)->getDamage() );
-                    //this->_projectiles.at(i).handleEnemyCollision();
-                    delete this->_projectiles.at(i);
-                    this->_projectiles.at(i) = 0;
-                    this->_projectiles.erase(this->_projectiles.begin() + i);
-                    --i;
+                    this->_projectiles.at(i)->handleEnemyCollision();
+
+                    if(this->_projectiles.at(i)->shallBeDestroyed())
+                    {
+                        delete this->_projectiles.at(i);
+                        this->_projectiles.at(i) = 0;
+                        this->_projectiles.erase(this->_projectiles.begin() + i);
+                        --i;
+                    }
                 }
             }
         }
@@ -576,20 +535,6 @@ void Level::addEnemy(Enemy *enemy)
     this->_enemies.push_back(enemy);
 }
 
-std::vector<Door> Level::checkDoorCollisions(const Rectangle &other)
-{
-    std::vector<Door> others;
-    for(int i = 0; i < this->_doorList.size(); ++i)
-    {
-        if(this->_doorList.at(i).collidesWith(other))
-        {
-            others.push_back(this->_doorList.at(i));
-        }
-    }
-
-    return others;
-}
-
 std::vector<Enemy*> Level::checkEnemyCollisions(const Rectangle &other)
 {
     std::vector<Enemy*> others;
@@ -626,16 +571,6 @@ Tower* Level::getTowerAtMouse(int mouseX, int mouseY, int* index)
     }
 
     return nullptr;
-}
-
-const Vector2 Level::getBulletSpawnPoint() const
-{
-    return this->_bulletSpawnPoint;
-}
-
-const Vector2 Level::getRocketSpawnPoint() const
-{
-    return this->_rocketSpawnPoint;
 }
 
 const Vector2 Level::getEnemySpawnPoint() const
