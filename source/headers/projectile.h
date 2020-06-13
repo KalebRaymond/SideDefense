@@ -7,6 +7,7 @@
 
 
 class Graphics;
+class Enemy;
 
 class Projectile : public AnimatedSprite
 {
@@ -16,10 +17,18 @@ class Projectile : public AnimatedSprite
         ~Projectile();
 
         void draw(Graphics &graphics);
-        virtual void update(float elapsedTime);
+        virtual void update(float elapsedTime, std::vector<Enemy*> *enemies);
 
         void moveDirection(float elapsedTime);
         virtual void setDirection(Direction direction);
+
+        virtual void handleEnemyCollision() = 0;
+
+        const inline bool shallBeDestroyed() const
+        {
+            return _destroy;
+        }
+
 
         int getDamage();
 
@@ -27,7 +36,7 @@ class Projectile : public AnimatedSprite
         float _dx, _dy;
         Direction _direction;
         int _damage;
-
+        bool _destroy;
 };
 
 /*  Bullet class
@@ -40,7 +49,9 @@ class Bullet : public Projectile
         Bullet(Graphics &graphics, Vector2 spawnPoint);
         ~Bullet();
 
-        void update(float elapsedTime);
+        void update(float elapsedTime, std::vector<Enemy*> *enemies);
+
+        void handleEnemyCollision();
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
@@ -59,7 +70,9 @@ class Rocket : public Projectile
 
         float getAngleToTarget();
 
-        void update(float elapsedTime);
+        void update(float elapsedTime, std::vector<Enemy*> *enemies);
+
+        void handleEnemyCollision();
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
@@ -68,6 +81,9 @@ class Rocket : public Projectile
 
     private:
         int _targetX, _targetY;
+        int _lastDirectionChangeTime;
+        int _directionChangeCooldown;
+        bool _dealDamage;
 };
 
 #endif // PROJECTILE_H

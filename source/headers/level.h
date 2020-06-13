@@ -6,7 +6,6 @@
 #include "globals.h"
 #include "tile.h"
 #include "rectangle.h"
-#include "door.h"
 #include "tower.h"
 
 #include "projectile.h"
@@ -24,7 +23,7 @@ class Level
         Level();
         Level(std::string mapName, Graphics& graphics);
         ~Level();
-        void update(Graphics &graphics, int elapsedTime, Player &player);
+        void update(Graphics &graphics, int elapsedTime);
         void draw(Graphics& graphics);
         inline SDL_Texture* getBackgroundTexture() const
         {
@@ -35,7 +34,6 @@ class Level
         void addProjectile(Projectile *projectile);
         void addEnemy(Enemy *enemy);
 
-        std::vector<Door> checkDoorCollisions(const Rectangle &other);
         std::vector<Enemy*> checkEnemyCollisions(const Rectangle &other);
 
         /*  deleteTower erases the tower at index index from _towers, and
@@ -51,15 +49,12 @@ class Level
         *   return a vector<Tower*>.
         */
         Tower* getTowerAtMouse(int mouseX, int mouseY, int* index);
-        const Vector2 getBulletSpawnPoint() const;
-        const Vector2 getRocketSpawnPoint() const;
+
         const Vector2 getEnemySpawnPoint() const;
 
     private:
         //Don't really need all of these for a menu. Make another base class that both this and menu derive from? Perhaps.
         std::string _mapName;
-        Vector2 _bulletSpawnPoint;
-        Vector2 _rocketSpawnPoint;
         Vector2 _enemySpawnPoint;
         Vector2 _size;
         Vector2 _tileSize;
@@ -67,8 +62,7 @@ class Level
 
         std::vector<Tile> _tileList;
         std::vector<Tileset> _tilesets;
-        std::vector<Door> _doorList;
-        std::vector<Enemy*> _enemies; //Polymorphism! (and potential memory leak!)
+        std::vector<Enemy*> _enemies; //Potential memory leak!
         std::vector<Tower*> _towers;
         std::vector<Projectile*> _projectiles;
 
