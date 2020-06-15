@@ -17,26 +17,26 @@ class Projectile : public AnimatedSprite
         ~Projectile();
 
         void draw(Graphics &graphics);
-        virtual void update(float elapsedTime, std::vector<Enemy*> *enemies);
+        virtual void update(int elapsedTime, std::vector<Enemy*> *enemies);
 
-        void moveDirection(float elapsedTime);
+        void moveDirection(int elapsedTime);
         virtual void setDirection(Direction direction);
 
-        virtual void handleEnemyCollision() = 0;
+        virtual void handleEnemyCollision(Enemy* enemy) = 0;
 
         const inline bool shallBeDestroyed() const
         {
             return _destroy;
         }
 
-
         int getDamage();
 
     protected:
-        float _dx, _dy;
         Direction _direction;
+        float _dx, _dy;
         int _damage;
         bool _destroy;
+        bool _dealDamage;
 };
 
 /*  Bullet class
@@ -49,9 +49,12 @@ class Bullet : public Projectile
         Bullet(Graphics &graphics, Vector2 spawnPoint);
         ~Bullet();
 
-        void update(float elapsedTime, std::vector<Enemy*> *enemies);
+        void update(int elapsedTime, std::vector<Enemy*> *enemies);
 
-        void handleEnemyCollision();
+        /*  Sets _damage to zero. Sets _destroy to true if enemy HP is
+        *   zero, or if bullet crosses enemy's sprite's midpoint.
+        */
+        void handleEnemyCollision(Enemy* enemy);
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
@@ -68,11 +71,9 @@ class Rocket : public Projectile
         Rocket();
         Rocket(Graphics &graphics, Vector2 spawnPoint);
 
-        float getAngleToTarget();
+        void update(int elapsedTime, std::vector<Enemy*> *enemies);
 
-        void update(float elapsedTime, std::vector<Enemy*> *enemies);
-
-        void handleEnemyCollision();
+        void handleEnemyCollision(Enemy* enemy);
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
@@ -83,7 +84,6 @@ class Rocket : public Projectile
         int _targetX, _targetY;
         int _lastDirectionChangeTime;
         int _directionChangeCooldown;
-        bool _dealDamage;
 };
 
 #endif // PROJECTILE_H

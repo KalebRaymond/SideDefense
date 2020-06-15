@@ -3,11 +3,11 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include "globals.h"
 #include "tile.h"
 #include "rectangle.h"
 #include "tower.h"
-
 #include "projectile.h"
 
 class Graphics;
@@ -25,16 +25,13 @@ class Level
         ~Level();
         void update(Graphics &graphics, int elapsedTime);
         void draw(Graphics& graphics);
-        inline SDL_Texture* getBackgroundTexture() const
-        {
-            return this->_backgroundTexture;
-        }
 
+        /*  addTower inserts the passed tower pointer into this->_towers
+        *   addProjectile and addEnemy work similarly
+        */
         void addTower(Tower *tower);
         void addProjectile(Projectile *projectile);
         void addEnemy(Enemy *enemy);
-
-        std::vector<Enemy*> checkEnemyCollisions(const Rectangle &other);
 
         /*  deleteTower erases the tower at index index from _towers, and
         *   frees the tower from memory
@@ -44,30 +41,36 @@ class Level
         /*  getTowerAtMouse returns a pointer to a tower object located at
         *   mouseX, mouseY. The index of the tower in _towers is stored in
         *   &index. If there is no tower at that coordinate, nullptr is
-        *   returned. As of now it shouldn't be possible for more than one
-        *   tower to overlap, but if it comes to that, this function should
-        *   return a vector<Tower*>.
+        *   returned and index is given the value -1.
         */
         Tower* getTowerAtMouse(int mouseX, int mouseY, int* index);
 
-        const Vector2 getEnemySpawnPoint() const;
+        /*  getFloorY() returns the y value in pixels of the floor. It time,
+        *   this will probably return a vector when there are multiple floors
+        */
+        const int getFloorY() const;
+
+        /*  freeMemory() frees and erases every pointer in _enemies, _towers, and
+        *   _projectiles
+        */
+        void freeMemory();
 
     private:
-        //Don't really need all of these for a menu. Make another base class that both this and menu derive from? Perhaps.
-        std::string _mapName;
-        Vector2 _enemySpawnPoint;
-        Vector2 _size;
-        Vector2 _tileSize;
-        SDL_Texture* _backgroundTexture;
-
         std::vector<Tile> _tileList;
         std::vector<Tileset> _tilesets;
-        std::vector<Enemy*> _enemies; //Potential memory leak!
+        std::vector<Enemy*> _enemies;
         std::vector<Tower*> _towers;
         std::vector<Projectile*> _projectiles;
 
         std::vector<Rectangle> _floors;
         std::vector<Rectangle> _walls;
+
+        SDL_Texture* _backgroundTexture;
+
+        Vector2 _size;
+        Vector2 _tileSize;
+
+        std::string _mapName;
 
         void loadMap(std::string mapName, Graphics &graphics);
 };

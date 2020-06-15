@@ -17,7 +17,7 @@ class Enemy : public AnimatedSprite
         virtual void update(int elapsedTime);
         virtual void draw(Graphics &graphics);
 
-        virtual void moveDirection(float elapsedTime);
+        virtual void moveDirection(int elapsedTime);
 
         const inline int getMaxHealth() const { return this->_maxHealth; }
         const inline int getCurrentHealth() const { return this->_currentHealth; }
@@ -33,8 +33,8 @@ class Enemy : public AnimatedSprite
         virtual void attack(Tower* tower) = 0;
 
     protected:
-        float _dx, _dy;
         Direction _direction;
+        float _dx, _dy;
         int _maxHealth;
         int _currentHealth;
         int _damage;
@@ -49,16 +49,12 @@ class BasicEnemy : public Enemy
         void update(int elapsedTime);
         void draw(Graphics &graphics);
 
-        void moveDirection(float elapsedTime);
+        void moveDirection(int elapsedTime);
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
 
         void attack(Tower* tower);
-
-    private:
-        float _startingX, _startingY;
-
 };
 
 #endif // ENEMY_H
