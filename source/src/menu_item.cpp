@@ -80,7 +80,10 @@ void MenuItem::setSprite(std::string name, int sourceX, int sourceY, int width, 
 
 void MenuItem::onHover()
 {
-    setSprite(this->_name, 21, this->_sourceRect.y, 16, 16);
+    if(this->_name != "hp" && this->_name != "cash")
+    {
+        setSprite(this->_name, 21, this->_sourceRect.y, 16, 16);
+    }
 }
 
 void MenuItem::onClick()
@@ -111,8 +114,9 @@ TowerMenuItem::TowerMenuItem()
 
 }
 
-TowerMenuItem::TowerMenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint)
-    :   MenuItem(name, graphics, sourceX, sourceY, width, height, spawnPoint)
+TowerMenuItem::TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint)
+    :   MenuItem(name, graphics, sourceX, sourceY, width, height, spawnPoint),
+        _price(price)
 {
 
 }
@@ -147,17 +151,21 @@ void TowerMenuItem::onHover()
     setSprite(this->_name, 100, this->_sourceRect.y, 40, 40);
 }
 
-Tower* TowerMenuItem::createTower(Graphics &graphics, int mouseX, int mouseY)
+Tower* TowerMenuItem::createTower(Graphics &graphics, int mouseX, int mouseY, int money)
 {
     Tower* tower = nullptr;
 
-    if(this->_name == "bulletTower")
+    if(this->_name == "bulletTower" && money >= 100)
     {
        tower = new BulletTower(graphics, Vector2(mouseX, mouseY));
     }
-    else if(this->_name == "rocketTower")
+    else if(this->_name == "rocketTower" && money >= 250)
     {
        tower = new RocketTower(graphics, Vector2(mouseX, mouseY));
+    }
+    else if(this->_name == "sniperTower" && money >= 75)
+    {
+       tower = new SniperTower(graphics, Vector2(mouseX, mouseY));
     }
 
     if(tower != nullptr)
