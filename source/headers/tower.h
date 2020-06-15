@@ -6,6 +6,7 @@
 #include "globals.h"
 
 class Graphics;
+class Enemy;
 class Projectile;
 
 class Tower : public AnimatedSprite
@@ -14,21 +15,28 @@ class Tower : public AnimatedSprite
         Tower();
         Tower(Graphics &graphics, std::string filepath, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint, int timeToUpdate, int maxHealth);
 
-        virtual void update(int elapsedTime, Graphics &graphics);
+        virtual void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         virtual void draw(Graphics &graphics);
 
+        /*  Returns nullptr here. In derived classes, fireProjectile() increments
+        *   _lastFireTime by elapsedTime. If _lastFireTime > _fireCoolDown and this
+        *   tower is not being dragged, returns a pointer to a projectile subclass
+        *   corresponding to the type of the tower. Otherwise returns nullptr
+        */
         virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
 
         bool getDragged();
         void setDragged(bool dragged);
         bool getPlaced();
         void setPlaced(bool placed);
+        bool isPositionValid();
+        void setPositionValid(bool valid);
 
-        //All towers react to mouse-overs the same way. The user can click and drag
-        //a tower to place it in the level (if enough cash)...
-        //Returns true if the point (x, y) is inside the bounding box for this tower
+        bool canPlaceOnWall();
+
+        /*pointCollides() returns true if the point (x, y) is inside the bounding box for this tower
+        */
         bool pointCollides(int x, int y);
-        virtual void handleMouseEvent(int mouseX, int mouseY);
 
         void setCurrentHealth(int hp);
         void reduceCurrentHealth(int dmg);
@@ -36,12 +44,8 @@ class Tower : public AnimatedSprite
         int getPrice();
 
     protected:
-        //Direction _direction
-        float _startingX, _startingY; //I'm not totally sure these even do anything
         int _maxHealth;
         int _currentHealth;
-        bool _dragged;
-        bool _placed;
 
         //_fireCoolDown and _lastFireTime are measured in milliseconds
         int _fireCoolDown;
@@ -49,9 +53,11 @@ class Tower : public AnimatedSprite
 
         int _price;
 
+        bool _dragged;
+        bool _placed;
+        bool _valid;
+        bool _canPlaceOnWall;
 };
-
-class Bullet;
 
 class BulletTower : public Tower
 {
@@ -59,7 +65,7 @@ class BulletTower : public Tower
         BulletTower();
         BulletTower(Graphics &graphics, Vector2 spawnPoint);
 
-        void update(int elapsedTime, Graphics &graphics);
+        void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         void draw(Graphics &graphics);
 
         void animationDone(std::string currentAnimation);
@@ -67,11 +73,7 @@ class BulletTower : public Tower
 
         Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
 
-        void handleMouseEvent(int mouseX, int mouseY);
-
-    private:
 };
-
 
 class RocketTower : public Tower
 {
@@ -79,17 +81,42 @@ class RocketTower : public Tower
         RocketTower();
         RocketTower(Graphics &graphics, Vector2 spawnPoint);
 
-        void update(int elapsedTime, Graphics &graphics);
+        void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         void draw(Graphics &graphics);
 
         void animationDone(std::string currentAnimation);
         void setupAnimation();
 
         Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+};
 
-        void handleMouseEvent(int mouseX, int mouseY);
+class SniperTower : public Tower
+{
+    public:
+        SniperTower();
+        SniperTower(Graphics &graphics, Vector2 spawnPoint);
+
+        void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
+        void draw(Graphics &graphics);
+
+        void animationDone(std::string currentAnimation);
+        void setupAnimation();
+
+        /*  SniperTower::fireProjectile will always return nullptr, because rather
+        *   than fire a projectile, the tower directly reduces an enemy's HP and
+        *   draws a line.
+        */
+        Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
 
     private:
+        int _barrelX, _barrelY;
+        int _damage;
+
+        /*  _laserLifespan dictates the amount of time a laser rendered from this
+        *   class will remain on the screen. Regardless of this value, a laser will
+        *   only deal damage on the first frame it is created.
+        */
+        int _laserLifespan;
 };
 
 #endif // TOWER_H

@@ -60,6 +60,10 @@ class TowerMenuItem : public MenuItem
             return this->_price;
         }
 
+        /*  createTower() returns a pointer to a tower subclass determined by this->_name
+        *   initialized to the mouse position, if money is greater than this->_price.
+        *   Otherwise, nullptr is returned.
+        */
         Tower* createTower(Graphics &graphics, int mouseX, int mouseY, int money);
 
     private:
