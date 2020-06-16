@@ -9,10 +9,13 @@ MenuItem::MenuItem()
 
 }
 
-MenuItem::MenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint)
+MenuItem::MenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint, bool interactable)
     :   Sprite(graphics, "content/sprites/menu.png", sourceX, sourceY, width, height, spawnPoint.x, spawnPoint.y),
         _name(name),
-        _clicked(false)
+        _sourceX(sourceX),
+        _sourceY(sourceY),
+        _clicked(false),
+        _interactable(interactable)
 {
 
 }
@@ -25,7 +28,7 @@ void MenuItem::update(int elapsedTime, Input &input)
 
     //The music and sfx icons should toggle on or off, but the save icon should
     //only have the pressed-down sprite while the left mouse button is held down
-    if( mousePosition.collidesWith(this->getBoundingBox()) )
+    if( _interactable && mousePosition.collidesWith(this->getBoundingBox()) )
     {
         if(!this->_clicked)
         {
@@ -114,8 +117,8 @@ TowerMenuItem::TowerMenuItem()
 
 }
 
-TowerMenuItem::TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint)
-    :   MenuItem(name, graphics, sourceX, sourceY, width, height, spawnPoint),
+TowerMenuItem::TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 spawnPoint, bool interactable)
+    :   MenuItem(name, graphics, sourceX, sourceY, width, height, spawnPoint, interactable),
         _price(price)
 {
 
@@ -123,13 +126,11 @@ TowerMenuItem::TowerMenuItem(std::string name, int price, Graphics &graphics, in
 
 void TowerMenuItem::update(int elapsedTime, Input &input)
 {
-    this->_clicked = false;
-
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
     Rectangle mousePosition = {mouseX, mouseY, 0, 0};
 
-    if( mousePosition.collidesWith(this->getBoundingBox()) )
+    if( this->_interactable && mousePosition.collidesWith(this->getBoundingBox()) )
     {
         this->onHover();
 
@@ -140,7 +141,7 @@ void TowerMenuItem::update(int elapsedTime, Input &input)
     }
     else
     {
-        setSprite(this->_name, 58, this->_sourceRect.y, 40, 40);
+        setSprite(this->_name, this->_sourceX, this->_sourceRect.y, 40, 40);
     }
 
     Sprite::update();
@@ -148,7 +149,7 @@ void TowerMenuItem::update(int elapsedTime, Input &input)
 
 void TowerMenuItem::onHover()
 {
-    setSprite(this->_name, 100, this->_sourceRect.y, 40, 40);
+    setSprite(this->_name, this->_sourceX + 42, this->_sourceRect.y, 40, 40);
 }
 
 Tower* TowerMenuItem::createTower(Graphics &graphics, int mouseX, int mouseY, int money)
