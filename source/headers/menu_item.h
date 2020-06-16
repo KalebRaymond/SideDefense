@@ -12,7 +12,7 @@ class MenuItem : public Sprite
 {
     public:
         MenuItem();
-        MenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location);
+        MenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location, bool interactable);
 
         virtual void update(int elapsedTime, Input &input);
         void draw(Graphics &graphics, int x, int y);
@@ -43,14 +43,20 @@ class MenuItem : public Sprite
 
     protected:
         std::string _name;
+        int _sourceX, _sourceY;
         bool _clicked;
+
+        /*  If _interactable is false, MenuItem will not interact with mouse at all.
+        *   Obviously, I couldn't use the word static.
+        */
+        bool _interactable;
 };
 
 class TowerMenuItem : public MenuItem
 {
     public:
         TowerMenuItem();
-        TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location);
+        TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location, bool interactable);
 
         void update(int elapsedTime, Input &input);
         void onHover();

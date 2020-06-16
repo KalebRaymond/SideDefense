@@ -42,6 +42,9 @@ class Game
         Graphics _graphics;
         Menu _menu;
 
+        Tower* _selectedTower;
+        Tower* _towerAtMouse;
+
         int _money;
         int _health;
 };

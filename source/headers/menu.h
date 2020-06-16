@@ -4,6 +4,12 @@
 #include "menu_item.h"
 #include <vector>
 
+enum MenuState
+{
+    DEFAULT,
+    UPGRADE
+};
+
 class Graphics;
 
 class Menu
@@ -23,9 +29,20 @@ class Menu
 
         void addTowerMenuItem(TowerMenuItem t);
 
+        void setUpgradeMenuItems( TowerMenuItem* fromItem, TowerMenuItem* toItem);
+        void setState(MenuState state);
+
     protected:
         std::vector<MenuItem> _menuItems;
+        std::vector<MenuItem> _upgradeItems;
         std::vector<TowerMenuItem> _towerMenuItems;
+
+        /*
+        */
+        TowerMenuItem* _upgradeFrom;
+        TowerMenuItem* _upgradeTo;
+
+        MenuState _state;
 };
 
 #endif // MENU_H

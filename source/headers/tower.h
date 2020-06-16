@@ -8,6 +8,7 @@
 class Graphics;
 class Enemy;
 class Projectile;
+class TowerMenuItem;
 
 class Tower : public AnimatedSprite
 {
@@ -23,18 +24,25 @@ class Tower : public AnimatedSprite
         *   tower is not being dragged, returns a pointer to a projectile subclass
         *   corresponding to the type of the tower. Otherwise returns nullptr
         */
-        virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+        virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime) = 0;
 
         bool getDragged();
         void setDragged(bool dragged);
         bool getPlaced();
         void setPlaced(bool placed);
+        void setSelected(bool selected);
         bool isPositionValid();
         void setPositionValid(bool valid);
-
         bool canPlaceOnWall();
 
-        /*pointCollides() returns true if the point (x, y) is inside the bounding box for this tower
+        /*  getMenuItems() returns two TowerMenuItems. The first has a picture of
+        *   the tower calling this function, and is uninteractable. The second has
+        *   a picture of the tower's next upgrade. If the tower has no upgrade,
+        *   the second TowerMenuItem will be nullptr
+        */
+        virtual std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics) = 0;
+
+        /*  pointCollides() returns true if the point (x, y) is inside the bounding box for this tower
         */
         bool pointCollides(int x, int y);
 
@@ -55,6 +63,7 @@ class Tower : public AnimatedSprite
 
         bool _dragged;
         bool _placed;
+        bool _selected;
         bool _valid;
         bool _canPlaceOnWall;
 };
@@ -68,11 +77,9 @@ class BulletTower : public Tower
         void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         void draw(Graphics &graphics);
 
-        void animationDone(std::string currentAnimation);
-        void setupAnimation();
-
         Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
 
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
 };
 
 class RocketTower : public Tower
@@ -85,9 +92,10 @@ class RocketTower : public Tower
         void draw(Graphics &graphics);
 
         void animationDone(std::string currentAnimation);
-        void setupAnimation();
 
         Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
 };
 
 class SniperTower : public Tower
@@ -99,14 +107,13 @@ class SniperTower : public Tower
         void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         void draw(Graphics &graphics);
 
-        void animationDone(std::string currentAnimation);
-        void setupAnimation();
-
         /*  SniperTower::fireProjectile will always return nullptr, because rather
         *   than fire a projectile, the tower directly reduces an enemy's HP and
         *   draws a line.
         */
         Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
 
     private:
         int _barrelX, _barrelY;
