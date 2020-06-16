@@ -7,6 +7,7 @@
 
 class Graphics;
 class Tower;
+class Projectile;
 
 class Enemy : public AnimatedSprite
 {
@@ -23,10 +24,12 @@ class Enemy : public AnimatedSprite
         const inline int getCurrentHealth() const { return this->_currentHealth; }
         void setSpeed(float dx, float _dy);
 
-        //handleBulletCollision decreases _currentHealth by damage. As of right now
-        //enemies don't do anything special when hit depending on their subclass type,
-        //but if they do in the future, this needs to be a virtual void function.
-        void handleProjectileCollision(int damage);
+        void reduceHealth(int dmg);
+        /*  handleBulletCollision() decreases _currentHealth by p->_damage. As of right now
+        *   enemies don't do anything special when hit depending on their subclass type,
+        *   but if they do in the future, this needs to be a virtual void function.
+        */
+        void handleProjectileCollision(Projectile* p);
 
         /* attack will at the very least reduce tower's _currentHealth by this->_damage
         */
@@ -51,8 +54,19 @@ class BasicEnemy : public Enemy
 
         void moveDirection(int elapsedTime);
 
-        void animationDone(std::string currentAnimation);
-        void setupAnimation();
+        void attack(Tower* tower);
+};
+
+class ToughEnemy : public Enemy
+{
+     public:
+        ToughEnemy();
+        ToughEnemy(Graphics &graphics, int spawnX, int spawnY);
+
+        void update(int elapsedTime);
+        void draw(Graphics &graphics);
+
+        void moveDirection(int elapsedTime);
 
         void attack(Tower* tower);
 };
