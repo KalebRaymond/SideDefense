@@ -22,7 +22,9 @@ class Tower : public AnimatedSprite
         /*  Returns nullptr here. In derived classes, fireProjectile() increments
         *   _lastFireTime by elapsedTime. If _lastFireTime > _fireCoolDown and this
         *   tower is not being dragged, returns a pointer to a projectile subclass
-        *   corresponding to the type of the tower. Otherwise returns nullptr
+        *   corresponding to the type of the tower. Otherwise, second will be an
+        *   invisible TowerMenuItem with zero width and height (because I can't return
+        *   an std::pair of pointers when one of them is null or else it crashes...)
         */
         virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime) = 0;
 
@@ -104,6 +106,8 @@ class SniperTower : public Tower
         SniperTower();
         SniperTower(Graphics &graphics, Vector2 spawnPoint);
 
+        virtual void drawLaser(Graphics &graphics, int targetX, int targetY);
+
         void update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies);
         void draw(Graphics &graphics);
 
@@ -115,7 +119,7 @@ class SniperTower : public Tower
 
         std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
 
-    private:
+    protected:
         int _barrelX, _barrelY;
         int _damage;
 
@@ -124,6 +128,42 @@ class SniperTower : public Tower
         *   only deal damage on the first frame it is created.
         */
         int _laserLifespan;
+};
+
+/* Upgraded Towers */
+/*  They don't really do anything special, but I made these separate classes
+*   in case they do some time in the future
+*/
+
+class BulletTowerII : public BulletTower
+{
+     public:
+        BulletTowerII();
+        BulletTowerII(Graphics &graphics, Vector2 spawnPoint);
+
+        Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
+};
+
+class RocketTowerII : public RocketTower
+{
+    public:
+        RocketTowerII();
+        RocketTowerII(Graphics &graphics, Vector2 spawnPoint);
+
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
+};
+
+class SniperTowerII : public SniperTower
+{
+    public:
+        SniperTowerII();
+        SniperTowerII(Graphics &graphics, Vector2 spawnPoint);
+
+        void drawLaser(Graphics &graphics, int targetX, int targetY);
+
+        std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics);
 };
 
 #endif // TOWER_H
