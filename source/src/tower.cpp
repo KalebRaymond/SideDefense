@@ -228,7 +228,7 @@ Projectile* RocketTower::fireProjectile(Graphics &graphics, int elapsedTime)
 std::pair< TowerMenuItem*, TowerMenuItem* > RocketTower::getMenuItems(Graphics &graphics)
 {
     TowerMenuItem* from = new TowerMenuItem("rocketStatic", 0, graphics, 58, 45, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
-    TowerMenuItem* to = new TowerMenuItem("rocketUpgrade", 300, graphics, 142, 45, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+    TowerMenuItem* to = new TowerMenuItem("rocketUpgrade", 100, graphics, 142, 45, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
 
     return std::make_pair( from, to );
 }
@@ -275,6 +275,15 @@ SniperTower::SniperTower(Graphics &graphics, Vector2 spawnPoint)
     this->playAnimation("Left");
 }
 
+void SniperTower::drawLaser(Graphics &graphics, int targetX, int targetY)
+{
+    int offsetX = graphics.getCameraOffsetX();
+    int offsetY = graphics.getCameraOffsetY();
+
+    SDL_SetRenderDrawColor(graphics.getRenderer(), 0, 0, 0, 255);
+    SDL_RenderDrawLine(graphics.getRenderer(), this->_barrelX + offsetX, this->_barrelY + offsetY, targetX + offsetX, targetY + offsetY);
+    SDL_RenderPresent(graphics.getRenderer());
+}
 
 void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*> *enemies)
 {
@@ -311,13 +320,7 @@ void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*
 
     if(this->_laserLifespan > 0)
     {
-        int offsetX = graphics.getCameraOffsetX();
-        int offsetY = graphics.getCameraOffsetY();
-
-        //Draw laser
-        SDL_SetRenderDrawColor(graphics.getRenderer(), 0, 0, 0, 255);
-        SDL_RenderDrawLine(graphics.getRenderer(), this->_barrelX + offsetX, this->_barrelY + offsetY, targetX + offsetX, targetY + offsetY);
-        SDL_RenderPresent(graphics.getRenderer());
+        this->drawLaser(graphics, targetX, targetY);
 
         this->_laserLifespan -= elapsedTime;
     }
@@ -406,7 +409,144 @@ Projectile* SniperTower::fireProjectile(Graphics &graphics, int elapsedTime)
 std::pair< TowerMenuItem*, TowerMenuItem* > SniperTower::getMenuItems(Graphics &graphics)
 {
     TowerMenuItem* from = new TowerMenuItem("sniperStatic", 0, graphics, 58, 87, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
-    TowerMenuItem* to = new TowerMenuItem("sniperUpgrade", 300, graphics, 142, 87, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+    TowerMenuItem* to = new TowerMenuItem("sniperUpgrade", 100, graphics, 142, 87, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+
+    return std::make_pair( from, to );
+}
+
+/* Upgraded Towers */
+
+//BullTowerII class; upgrade form of BulletTower
+
+BulletTowerII::BulletTowerII()
+{
+
+}
+
+BulletTowerII::BulletTowerII(Graphics &graphics, Vector2 spawnPoint)
+    :   BulletTower(graphics, spawnPoint)
+{
+    this->_fireCoolDown = 500;
+    this->_lastFireTime = -1;
+    this->_price = 150;
+
+    this->resetAnimations();
+    this->addAnimation(1, 34, 0, "FaceLeft", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 50, 0, "Selected", 17, 16, Vector2(-2, 0));
+    this->playAnimation("FaceLeft");
+}
+
+Projectile* BulletTowerII::fireProjectile(Graphics &graphics, int elapsedTime)
+{
+    if(( _lastFireTime > _fireCoolDown || _lastFireTime < 0 ) && !this->_dragged)
+    {
+        _lastFireTime = 0;
+        Projectile* p = new Bullet(graphics, Vector2( this->_x, this->_y + 11 ));
+        p->addAnimation(1, 36, 18, "LeftII", 4, 3, Vector2(0, 0));
+        p->playAnimation("LeftII");
+        return p;
+    }
+    else
+    {
+        this->_lastFireTime += elapsedTime;
+        return nullptr;
+    }
+}
+
+std::pair< TowerMenuItem*, TowerMenuItem* > BulletTowerII::getMenuItems(Graphics &graphics)
+{
+    TowerMenuItem* from = new TowerMenuItem("bulletIIStatic", 0, graphics, 142, 3, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
+    TowerMenuItem* to = new TowerMenuItem("Empty", 0, graphics, 0, 0, 0, 0, Vector2(0, 0), false);
+
+    return std::make_pair( from, to );
+}
+
+//RocketTowerII class; upgrade form of RocketTower
+
+RocketTowerII::RocketTowerII()
+{
+
+}
+
+RocketTowerII::RocketTowerII(Graphics &graphics, Vector2 spawnPoint)
+    :   RocketTower(graphics, spawnPoint)
+{
+    this->_fireCoolDown = 1000;
+    this->_lastFireTime = -1;
+    this->_price = 350;
+
+    this->resetAnimations();
+    this->addAnimation(1, 23, 33, "FaceLeft", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 41, 33, "Selected", 17, 16, Vector2(-2, 0));
+    this->playAnimation("FaceLeft");
+}
+
+std::pair< TowerMenuItem*, TowerMenuItem* > RocketTowerII::getMenuItems(Graphics &graphics)
+{
+    TowerMenuItem* from = new TowerMenuItem("rocketIIStatic", 0, graphics, 142, 45, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
+    TowerMenuItem* to = new TowerMenuItem("Empty", 0, graphics, 0, 0, 0, 0, Vector2(0, 0), false);
+
+    return std::make_pair( from, to );
+}
+
+//SniperTowerII class; upgrade form of SniperTower
+
+SniperTowerII::SniperTowerII()
+{
+
+}
+
+SniperTowerII::SniperTowerII(Graphics &graphics, Vector2 spawnPoint)
+    :   SniperTower(graphics, spawnPoint)
+{
+    this->_damage = 3;
+    this->_fireCoolDown = 1000;
+    this->_lastFireTime = 0;
+    this->_price = 75;
+    this->_canPlaceOnWall = true;
+
+    //addAnimation is supposed to replace animations with the same name, but for some reason it doesn't.
+    this->resetAnimations();
+
+    this->addAnimation(1, 0 + 86, 0, "Left", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 17 + 86, 0, "Down15", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 34 + 86, 0, "Down30", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 51 + 86, 0, "Down45", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 68 + 86, 0, "Down60", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 17 + 86, 17, "Up15", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 34 + 86, 17, "Up30", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 51 + 86, 17, "Up45", 16, 16, Vector2(0, 0));
+    this->addAnimation(1, 68 + 86, 17, "Up60", 16, 16, Vector2(0, 0));
+
+    this->addAnimation(1, 0 + 86, 35, "LeftRed", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 17 + 86, 35, "Down15Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 34 + 86, 35, "Down30Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 51 + 86, 35, "Down45Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 68 + 86, 35, "Down60Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 17 + 86, 55, "Up15Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 34 + 86, 55, "Up30Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 51 + 86, 55, "Up45Red", 16, 18, Vector2(0, -2));
+    this->addAnimation(1, 68 + 86, 55, "Up60Red", 16, 18, Vector2(0, -2));
+
+    this->playAnimation("Left");
+}
+
+void SniperTowerII::drawLaser(Graphics &graphics, int targetX, int targetY)
+{
+    int offsetX = graphics.getCameraOffsetX();
+    int offsetY = graphics.getCameraOffsetY();
+
+    SDL_SetRenderDrawColor(graphics.getRenderer(), 237, 28, 36, 255);
+    SDL_RenderDrawLine(graphics.getRenderer(), this->_barrelX + offsetX, this->_barrelY + offsetY, targetX + offsetX, targetY + offsetY);
+    SDL_RenderPresent(graphics.getRenderer());
+
+    SDL_SetRenderDrawColor(graphics.getRenderer(), 0, 0, 0, 255);
+}
+
+std::pair< TowerMenuItem*, TowerMenuItem* > SniperTowerII::getMenuItems(Graphics &graphics)
+{
+    TowerMenuItem* from = new TowerMenuItem("sniperIIStatic", 0, graphics, 142, 45, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
+    TowerMenuItem* to = new TowerMenuItem("Empty", 0, graphics, 0, 0, 0, 0, Vector2(0, 0), false);
 
     return std::make_pair( from, to );
 }
