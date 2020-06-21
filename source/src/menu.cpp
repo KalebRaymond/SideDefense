@@ -24,7 +24,7 @@ Menu::Menu(Graphics &graphics)
 
     //Populate _upgradeItems with MenuItem objects
     this->_upgradeItems.emplace_back("towerHp", graphics, 4, 74, 14, 8, Vector2( 300, globals::GAME_VIEWPORT_H + 10 ), false);
-    this->_upgradeItems.emplace_back("sell", graphics, 4, 89, 26, 7, Vector2( 300, globals::GAME_VIEWPORT_H + 28 ), false);
+    this->_upgradeItems.emplace_back("sell", graphics, 4, 89, 26, 7, Vector2( 300, globals::GAME_VIEWPORT_H + 28 ), true);
     this->_upgradeItems.emplace_back("arrow", graphics, 4, 103, 11, 8, Vector2( 425, globals::GAME_VIEWPORT_H + 28 ), false);
 
     //Populate _towerMenuItems with TowerMenuItems
@@ -33,11 +33,11 @@ Menu::Menu(Graphics &graphics)
     this->_towerMenuItems.emplace_back("sniperTower", 75, graphics, 58, 87, 40, 40, Vector2(400, globals::GAME_VIEWPORT_H), true);
 }
 
-void Menu::update(int elapsedTime, Input &input)
+void Menu::update(int elapsedTime, Input &input, Game &game)
 {
     for(int i = 0; i < this->_menuItems.size(); ++i)
     {
-        this->_menuItems.at(i).update(elapsedTime, input);
+        this->_menuItems.at(i).update(elapsedTime, input, game);
     }
 
     switch(this->_state)
@@ -45,7 +45,7 @@ void Menu::update(int elapsedTime, Input &input)
         case DEFAULT:
             for(int i = 0; i < this->_towerMenuItems.size(); ++i)
             {
-                this->_towerMenuItems.at(i).update(elapsedTime, input);
+                this->_towerMenuItems.at(i).update(elapsedTime, input, game);
             }
 
             break;
@@ -53,16 +53,16 @@ void Menu::update(int elapsedTime, Input &input)
         case UPGRADE:
             for(int i = 0; i < this->_upgradeItems.size(); ++i)
             {
-                this->_upgradeItems.at(i).update(elapsedTime, input);
+                this->_upgradeItems.at(i).update(elapsedTime, input, game);
             }
 
             if(this->_upgradeFrom != nullptr)
             {
-                this->_upgradeFrom->update(elapsedTime, input);
+                this->_upgradeFrom->update(elapsedTime, input, game);
             }
             if(this->_upgradeTo != nullptr)
             {
-                this->_upgradeTo->update(elapsedTime, input);
+                this->_upgradeTo->update(elapsedTime, input, game);
             }
 
             break;
@@ -118,14 +118,27 @@ Tower* Menu::getTower(Graphics &graphics, int mouseX, int mouseY, int money)
 {
     Tower* tower = nullptr;
 
-    for(int i = 0; i < this->_towerMenuItems.size(); ++i)
+    if(this->_state == DEFAULT)
     {
-        if(this->_towerMenuItems.at(i).isClicked() && money >= this->_towerMenuItems.at(i).getPrice())
+        for(int i = 0; i < this->_towerMenuItems.size(); ++i)
         {
-            //If the player has enough money to purchase the tower corresponding with _towerMenuItems.at(i)._name,
-            //tower will point to a new tower subclass. Otherwise, TowerMenuItem::createTower will return nullptr.
-            tower = this->_towerMenuItems.at(i).createTower(graphics, mouseX, mouseY, money);
-
+            if(this->_towerMenuItems.at(i).isClicked() && money >= this->_towerMenuItems.at(i).getPrice())
+            {
+                //If the player has enough money to purchase the tower corresponding with _towerMenuItems.at(i)._name,
+                //tower will point to a new tower subclass. Otherwise, TowerMenuItem::createTower will return nullptr.
+                tower = this->_towerMenuItems.at(i).createTower(graphics, mouseX, mouseY, money);
+                if(tower != nullptr)
+                {
+                    return tower;
+                }
+            }
+        }
+    }
+    else if(this->_state == UPGRADE)
+    {
+        if(this->_upgradeTo->isClicked() && money >= this->_upgradeTo->getPrice())
+        {
+            tower = this->_upgradeTo->createTower(graphics, mouseX, mouseY, money);
             if(tower != nullptr)
             {
                 return tower;
@@ -142,10 +155,31 @@ void Menu::addTowerMenuItem(TowerMenuItem t)
     this->_towerMenuItems.push_back(t);
 }
 
+void Menu::freeUpgradeItems()
+{
+    if(this->_upgradeTo != nullptr)
+    {
+        delete this->_upgradeTo;
+    }
+
+    if(this->_upgradeFrom != nullptr)
+    {
+        delete this->_upgradeFrom;
+    }
+
+    this->_upgradeFrom = nullptr;
+    this->_upgradeTo = nullptr;
+}
+
 void Menu::setUpgradeMenuItems(TowerMenuItem* fromItem, TowerMenuItem* toItem)
 {
     this->_upgradeFrom = fromItem;
     this->_upgradeTo = toItem;
+}
+
+MenuState Menu::getState()
+{
+    return this->_state;
 }
 
 void Menu::setState(MenuState state)

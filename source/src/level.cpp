@@ -10,7 +10,6 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 
 using namespace tinyxml2;
 
@@ -20,8 +19,11 @@ Level::Level()
 }
 
 Level::Level(std::string mapName, Graphics& graphics)
-    :   _mapName(mapName),
-        _size(Vector2(0, 0))
+    :   _size(Vector2(0, 0)),
+        _mapName(mapName),
+        _doorOpenTime(4500),
+        _health(100),
+        _money(200)
 {
     this->loadMap(mapName, graphics);
 }
@@ -33,6 +35,20 @@ Level::~Level()
 
 void Level::loadMap(std::string mapName, Graphics& graphics)
 {
+    //Add doors to level
+    AnimatedSprite door = AnimatedSprite(graphics, "content/sprites/misc.png", 0, 7, 18, 40, 32, globals::GAME_VIEWPORT_H - 64 - 50, 100);
+    door.addAnimation(4, 0, 7, "Opening", 19, 40, Vector2(0, 0));
+    door.addAnimation(1, 57, 7, "Opened", 19, 40, Vector2(0, 0));
+    door.addAnimation(1, 0, 0, "Closed", 0, 0, Vector2(0, 0));
+    door.playAnimation("Closed");
+    this->_doors.push_back(door);
+
+    if(mapName == "level3")
+    {
+        door.setY(globals::GAME_VIEWPORT_H - 288 - 50);
+        this->_doors.push_back(door);
+    }
+
     //Parse tmx file
     XMLDocument doc;
     std::stringstream ss;
@@ -66,12 +82,8 @@ void Level::loadMap(std::string mapName, Graphics& graphics)
             XMLElement* pProperty = mapNode->FirstChildElement("properties")->FirstChildElement("property");
             std::string source = "content/tilesets/";
             source.append(pProperty->Attribute("value"));
-            std::cout << source;
 
             int firstGid;
-            char* path;
-            //std::stringstream ss;
-            //ss << source;
             pTileset->QueryAttribute("firstgid", &firstGid);
             SDL_Texture* tex = SDL_CreateTextureFromSurface(graphics.getRenderer(), graphics.loadImage(source.c_str()));
             this->_tilesets.push_back( Tileset(tex, firstGid) );
@@ -222,35 +234,19 @@ void Level::loadMap(std::string mapName, Graphics& graphics)
                                                 std::ceil(width) * globals::SPRITE_SCALE,
                                                 std::ceil(height) * globals::SPRITE_SCALE));
                         }
-
-
-                        pObject = pObject->NextSiblingElement("object");
-                    }
-                }
-            }
-
-            //Check other object groups here
-            else if(ss.str() == "spawnpoints")
-            {
-                XMLElement* pObject = pObjectGroup->FirstChildElement("object");
-                if(pObject != NULL)
-                {
-                    while(pObject)
-                    {
-                        float x = pObject->FloatAttribute("x");
-                        float y = pObject->FloatAttribute("y");
-                        const char* name = pObject->Attribute("name");
-                        std::stringstream ss;
-                        ss << name;
-                        if(ss.str() == "enemy")
+                        else if(ss.str() == "ceiling")
                         {
-                            this->_enemySpawnPoint = Vector2(std::ceil(x) * globals::SPRITE_SCALE, std::ceil(y) * globals::SPRITE_SCALE);
+                            this->_ceilings.push_back( Rectangle(
+                                                std::ceil(x) * globals::SPRITE_SCALE,
+                                                std::ceil(y) * globals::SPRITE_SCALE,
+                                                std::ceil(width) * globals::SPRITE_SCALE,
+                                                std::ceil(height) * globals::SPRITE_SCALE));
                         }
 
+
                         pObject = pObject->NextSiblingElement("object");
                     }
                 }
-
             }
 
             pObjectGroup = pObjectGroup->NextSiblingElement("objectgroup");
@@ -260,238 +256,337 @@ void Level::loadMap(std::string mapName, Graphics& graphics)
 
 void Level::update(Graphics &graphics, int elapsedTime)
 {
-    /*          Goal structure
-    *   Towers:         Tower - Tower
-    *                   Tower - Enemy
-    *                   Tower - Projectile
-    *                   Tower - Tile
-    *
-    *   Enemies:        Enemy - Enemy
-    *                   Enemy - Projectile
-    *                   Enemy - Tile
-    *
-    *   Projectiles:    Projectile - Projectile
-    *                   Projectile - Tile
-    *
-    *   Tiles:          Tile - Tile
-    */
-    //O(n^2)... I wonder if this whole update function can be optimized.
-    //Is it even a bad thing for it to be O(n^2)? is it worth it to strive
-    //for a better run time? Acceptable practice for a game? Google that.
-    //Update towers
-    for(int i = 0; i < this->_towers.size(); ++i)
+    if(this->_mapName != "blankScreen")
     {
-        this->_towers.at(i)->update(elapsedTime, graphics, &this->_enemies);
-
-        //If tower is being dragged, update position based on mouse position
-        if(this->_towers.at(i)->getDragged())
+        if(this->_doorOpenTime <= 0)
         {
-            int mouseX, mouseY;
-            SDL_GetMouseState(&mouseX, &mouseY);
-            this->_towers.at(i)->setX( mouseX - graphics.getCameraOffsetX() - 16 );
-            this->_towers.at(i)->setY( mouseY - graphics.getCameraOffsetY() - 16 );
-
-            //Prevent tower from going below floor
-            //This will create problems when there's more than one floor
-            for(int j = 0; j < this->_floors.size(); ++j)
+            std::string curAnimation = this->_doors.at(0).getCurrentAnimation();
+            if(curAnimation == "Closed")
             {
-                //Add 32px padding above and on sides of floor
-                Rectangle floorHitBox(  this->_floors.at(j).getLeft(),
-                                        this->_floors.at(j).getTop() - 32,
-                                        this->_floors.at(j).getWidth(),
-                                        this->_floors.at(j).getHeight() + 32);
-
-                Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY(), 0, 0);
-
-                if(mouseHitBox.collidesWith(floorHitBox))
+                for(int i = 0; i < this->_doors.size(); ++i)
                 {
-                    //Place tower on top of floor
-                    this->_towers.at(i)->setX( ((mouseX / 32) * 32) - graphics.getCameraOffsetX());
-                    this->_towers.at(i)->setY( this->_floors.at(j).getTop() - 32 );
-                    this->_towers.at(i)->setPositionValid(true);
+                    this->_doors.at(i).playAnimation("Opening", true);
+                }
+            }
+            else if(curAnimation == "Opening" && this->_doors.at(0).getFrameIndex() == 3)
+            {
+                for(int i = 0; i < this->_doors.size(); ++i)
+                {
+                    this->_doors.at(i).playAnimation("Opened");
+                }
+            }
+        }
+        else
+        {
+            this->_doorOpenTime -= elapsedTime;
+        }
+    }
+
+    for(int i = 0; i < this->_doors.size(); ++i)
+    {
+        this->_doors.at(i).update(elapsedTime);
+    }
+
+    this->_activeFloors.clear();
+
+    //Update enemies first
+    for(int i = 0; i < this->_enemies.size(); ++i)
+    {
+        Enemy* curEnemy = this->_enemies.at(i);
+        curEnemy->update(elapsedTime);
+
+        this->_activeFloors[curEnemy->getBoundingBox().getBottom()] = true;
+
+        Projectile* projectile = curEnemy->fireProjectile(graphics, elapsedTime);
+        //fireProjectile will return nullptr if not enough time has passed since the enemy's last fire
+        if(projectile != nullptr)
+        {
+            this->addEnemyProjectile(projectile);
+        }
+
+        bool stopAttacking = true;
+        int enemyRight = curEnemy->getBoundingBox().getRight();
+        int enemyLeft = curEnemy->getBoundingBox().getLeft();
+        int enemyBottom = curEnemy->getBoundingBox().getBottom();
+
+        //Loop over towers to check if there's a tower directly in front of enemy
+        for(int j = 0; j < this->_towers.size(); ++j)
+        {
+            if(this->_towers.at(j) != nullptr)
+            {
+                int left = this->_towers.at(j)->getBoundingBox().getLeft();
+                int right = this->_towers.at(j)->getBoundingBox().getRight();
+                int bottom = this->_towers.at(j)->getBoundingBox().getBottom();
+
+                if(!this->_towers.at(j)->getDragged() && enemyRight >= left && enemyRight < right && enemyBottom == bottom)
+                {
+                    //Found a tower directly in front of enemy
+                    stopAttacking = false;
+
+                    //Handle enemy if it is already attacking the tower
+                    if(curEnemy->getCurrentAnimation() == "AttackRight")
+                    {
+                        curEnemy->attack(this->_towers.at(j));
+                    }
+                    else
+                    {
+                        //If enemy is not already attacking the tower, change enemy's animation.
+                        //If enemy's sprite clipped into tower's, move enemy back so that the hitboxes
+                        //are side-by-side.
+                        curEnemy->setX( curEnemy->getX() - (enemyRight - left) );
+                        curEnemy->setSpeed(0, 0);
+                        curEnemy->playAnimation("AttackRight");
+                    }
+                }
+            }
+        }
+
+        //Loop over walls to check if there's a wall directly in front of enemy
+        for(int j = 0; j < this->_walls.size(); ++j)
+        {
+            int left = this->_walls.at(j).getLeft();
+            int right = this->_walls.at(j).getRight();
+
+            if(enemyRight >= left && enemyLeft < right)
+            {
+                stopAttacking = false;
+
+                //Handle enemy if it is already attacking the wall
+                if(curEnemy->getCurrentAnimation() == "AttackRight")
+                {
+                    curEnemy->handleWallCollision(*this);
                 }
                 else
                 {
-                    this->_towers.at(i)->setPositionValid(false);
+                    //If enemy is not already attacking the wall, change enemy's animation.
+                    //If enemy's sprite clipped into tower's, move enemy back so that the hitboxes
+                    //are side-by-side.
+                    curEnemy->setX( curEnemy->getX() - (enemyRight - left) );
+                    curEnemy->setSpeed(0, 0);
+                    curEnemy->playAnimation("AttackRight");
                 }
-            }
-
-            //Prevent tower from going inside walls
-            for(int j = 0; j < this->_walls.size(); ++j)
-            {
-                //Add 32px padding on sides of wall
-                Rectangle wallHitBox(  this->_walls.at(j).getLeft() - 32,
-                                        this->_walls.at(j).getTop(),
-                                        this->_walls.at(j).getWidth() +  64,
-                                        this->_walls.at(j).getHeight());
-
-                Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY() , 0, 0);
-
-                if(mouseHitBox.collidesWith(wallHitBox))
-                {
-                    this->_towers.at(i)->setY( ((mouseY / 32) * 32) - graphics.getCameraOffsetY());
-                    //Place tower next to wall
-                    //If wall is left boundary, put on right side. If wall is right boundary, left side. Otherwise, getCollisionSide
-                    if(this->_walls.at(j).getLeft() == 0)
-                    {
-                        this->_towers.at(i)->setX( this->_walls.at(j).getRight());
-                    }
-                    else if(this->_walls.at(j).getRight() == this->_size.x * 16 * globals::SPRITE_SCALE)
-                    {
-                        this->_towers.at(i)->setX( this->_walls.at(j).getLeft() - 32);
-                    }
-                }
-            }
-
-            //Handle mouse going outside of game viewport
-            if(this->_towers.at(i)->getY() > globals::GAME_VIEWPORT_H - 64)
-            {
-                //this->_towers.at(i)->setY(globals::GAME_VIEWPORT_H - 96);
             }
         }
-        else if(!this->_towers.at(i)->getDragged())
+
+        //If enemy is not in front of a tower or wall, resume walking or firing projectile
+        if(stopAttacking && curEnemy->getCurrentAnimation() != "Fire")
         {
-            //Only fire bullet if an enemy is in line of sight
-            int left = this->_towers.at(i)->getBoundingBox().getLeft();
-            int right = this->_towers.at(i)->getBoundingBox().getRight();
-            int top = this->_towers.at(i)->getBoundingBox().getTop();
-            int bottom = this->_towers.at(i)->getBoundingBox().getBottom();
+            this->_enemies.at(i)->setSpeed(0.04, 0);
+            this->_enemies.at(i)->playAnimation("WalkRight");
+        }
 
-            //Cycle through list of enemies to get positions
-            int enemyX, enemyBottom, enemyRight;
-            for(int j = 0; j < this->_enemies.size(); ++j)
+        //Loop over projectiles to handle any collisions
+        for(int j = 0; j < this->_projectiles.size(); ++j)
+        {
+            Projectile* curProjectile = this->_projectiles.at(j);
+
+            if(curProjectile->getBoundingBox().collidesWith(curEnemy->getBoundingBox()) )
             {
-                enemyX = this->_enemies.at(j)->getX();
-                enemyBottom = this->_enemies.at(j)->getBoundingBox().getBottom();
-                enemyRight = this->_enemies.at(j)->getBoundingBox().getRight();
+                curEnemy->handleProjectileCollision( curProjectile );
+                curProjectile->handleEnemyCollision( curEnemy );
+            }
+        }
 
+        //If enemy runs out of HP, defer destroying it until next frame
+        if(this->_enemies.at(i)->shallBeDestroyed())
+        {
+            delete this->_enemies.at(i);
+            this->_enemies.at(i) = nullptr;
+            this->_enemies.erase(this->_enemies.begin() + i);
+            --i;
+        }
+        else if(curEnemy->getCurrentHealth() <= 0)
+        {
+            curEnemy->setDestroy(true);
+            this->increaseMoney( curEnemy->getValue() );
+        }
+    }
+
+    //Update towers, handle dragging and dropping, delete if health is zero
+    for(int i = 0; i < this->_towers.size(); ++i)
+    {
+        if(this->_towers.at(i) != nullptr)
+        {
+            Tower* curTower = this->_towers.at(i);
+            curTower->update(elapsedTime, graphics, &this->_enemies);
+
+            //If tower is being dragged, update position based on mouse position
+            if(curTower->getDragged())
+            {
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                curTower->setX( mouseX - graphics.getCameraOffsetX() - 16 );
+                curTower->setY( mouseY - graphics.getCameraOffsetY() - 16 );
+
+                curTower->setPositionValid(false);
+
+                //Prevent tower from going below floor
+                //This will create problems when there's more than one floor
+                for(int j = 0; j < this->_floors.size(); ++j)
+                {
+                    //Add 32px padding above and on sides of floor
+                    Rectangle floorHitBox(  this->_floors.at(j).getLeft(),
+                                            this->_floors.at(j).getTop() - 32,
+                                            this->_floors.at(j).getWidth(),
+                                            this->_floors.at(j).getHeight() + 32);
+
+                    Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY(), 0, 0);
+
+                    if(mouseHitBox.collidesWith(floorHitBox))
+                    {
+                        //Place tower on top of floor
+                        curTower->setX( ((mouseX - graphics.getCameraOffsetX()) / 32) * 32);
+                        curTower->setY( this->_floors.at(j).getTop() - 32 );
+
+                        //If tower can be built on floors, mark current position as valid
+                        //Towers can only be built on either floors or walls; no tower can
+                        //be built on both.
+                        if(!curTower->canPlaceOnWall())
+                        {
+                            curTower->setPositionValid(true);
+                        }
+                    }
+                }
+
+                //Prevent tower from going inside walls
+                for(int j = 0; j < this->_walls.size(); ++j)
+                {
+                    //Add 32px padding on sides of wall
+                    Rectangle wallHitBox(  this->_walls.at(j).getLeft() - 32,
+                                            this->_walls.at(j).getTop(),
+                                            this->_walls.at(j).getWidth() +  64,
+                                            this->_walls.at(j).getHeight());
+
+                    Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY() , 0, 0);
+
+                    if(mouseHitBox.collidesWith(wallHitBox))
+                    {
+                        curTower->setY( ((mouseY - graphics.getCameraOffsetY()) / 32) * 32);
+                        //Place tower next to wall
+                        //If wall is left boundary, put on right side. If wall is right boundary, left side. Otherwise, getCollisionSide
+                        if(this->_walls.at(j).getLeft() == 0)
+                        {
+                            curTower->setX( this->_walls.at(j).getRight());
+                            curTower->setPositionValid(false);
+                        }
+                        else if(this->_walls.at(j).getRight() == this->_size.x * 16 * globals::SPRITE_SCALE)
+                        {
+                            curTower->setX( this->_walls.at(j).getLeft() - 32);
+
+                            if(curTower->canPlaceOnWall())
+                            {
+                                curTower->setPositionValid(true);
+                            }
+                        }
+                    }
+                }
+
+                //Prevent tower from going inside ceilings
+                for(int j = 0; j < this->_ceilings.size(); ++j)
+                {
+                    //Add 32px padding on sides of wall
+                    Rectangle ceilingHitBox(    this->_ceilings.at(j).getLeft(),
+                                                this->_ceilings.at(j).getTop(),
+                                                this->_ceilings.at(j).getWidth(),
+                                                this->_ceilings.at(j).getHeight() + 32);
+
+                    Rectangle mouseHitBox( mouseX - graphics.getCameraOffsetX(), mouseY - graphics.getCameraOffsetY() , 0, 0);
+
+                    if(mouseHitBox.collidesWith(ceilingHitBox))
+                    {
+                        //Place tower underneath ceiling
+                        curTower->setX( ((mouseX - graphics.getCameraOffsetX()) / 32) * 32);
+                        curTower->setY( this->_ceilings.at(j).getBottom());
+
+                        curTower->setPositionValid(false);
+                    }
+                }
+            }
+            else if(!curTower->getDragged())
+            {
                 //Fire projectile if there is an enemy in the tower's line of sight.
                 //If an enemy is on the same plane as the tower, then the enemy sprite's
                 //bottom will be equal to the tower's bottom.
-                if(enemyX < left && enemyBottom == bottom)
+                if(this->_activeFloors[curTower->getBoundingBox().getBottom()] == true)
                 {
-                    Projectile* projectile = this->_towers.at(i)->fireProjectile(graphics, elapsedTime);
+                    Projectile* projectile = curTower->fireProjectile(graphics, elapsedTime);
 
                     //fireProjectile will return nullptr if not enough time has passed since the tower's last fire
                     if(projectile != nullptr)
                     {
                         this->addProjectile(projectile);
                     }
+                }
 
-                    //If enemy is directly in front of tower, play the enemy's attack animation.
-                    if(enemyRight >= left && enemyRight < right)
-                    {
-                        //Handle enemy if it already attacking tower
-                        if(this->_enemies.at(j)->getCurrentAnimation() == "AttackRight")
-                        {
-                            this->_enemies.at(j)->attack( this->_towers.at(i) );
-                        }
-                        else
-                        {
-                            //If enemy is not currently attacking tower, change enemy's animation.
-                            //If enemy's sprite clipped into tower's, move enemy back so that the hitboxes
-                            //are side-by-side.
-                            this->_enemies.at(j)->setX( this->_enemies.at(j)->getX() - (enemyRight - left) );
-                            this->_enemies.at(j)->setSpeed(0, 0);
-                            this->_enemies.at(j)->playAnimation("AttackRight");
-                        }
-                    }
+            }
 
-                    //Only need one enemy to initiate projectile, so this for loop can
-                    //break after the projectile is created.
-                    break;
+            //Loop over enemy projectiles to handle collisions
+            for(int j = 0; j < this->_enemyProjectiles.size(); ++j)
+            {
+                Projectile* curEnmyProj = this->_enemyProjectiles.at(j);
+
+                if(!curTower->getDragged() && curTower->getBoundingBox().collidesWith( curEnmyProj->getBoundingBox() ))
+                {
+                    curEnmyProj->handleTowerCollision(curTower);
                 }
             }
-        }
 
-        //Destroy tower if health is zero
-        if(this->_towers.at(i)->getCurrentHealth() <= 0)
-        {
-            delete this->_towers.at(i);
-            this->_towers.at(i) = NULL;
-            this->_towers.erase(this->_towers.begin() + i);
-            --i;
+            //If tower runs out of HP, defer destroying it until next frame
+            if(this->_towers.at(i)->shallBeDestroyed())
+            {
+                delete this->_towers.at(i);
+                this->_towers.at(i) = nullptr;
+            }
+            else if(curTower->getCurrentHealth() <= 0)
+            {
+                curTower->setDestroy(true);
+            }
         }
     }
 
+    //Loop over projectiles once more to delete them if necessary.
+    //This has to have it's own separate O(n) loop or else the projectiles
+    //won't update, and they will all freeze in place
     for(int i = 0; i < this->_projectiles.size(); ++i)
     {
-        //Replace _projectiles.at(i) with a pointer/reference?
-        this->_projectiles.at(i)->update(elapsedTime, &this->_enemies);
-        //Destroy projectile if it hits the left wall. Should actually handle collisions (rockets explode)
-        if(this->_projectiles.at(i)->getX() < 32)
+        Projectile* curProjectile = this->_projectiles.at(i);
+        curProjectile->update(elapsedTime, &this->_enemies);
+
+        if(curProjectile->shallBeDestroyed())
         {
-            //Make this a function like deleteTower()
             delete this->_projectiles.at(i);
-            _projectiles.at(i) = 0;
+            _projectiles.at(i) = nullptr;
             this->_projectiles.erase(this->_projectiles.begin() + i);
+            curProjectile = nullptr;
             --i;
-        }
-        else
-        {
-            for(int j = 0; j < this->_enemies.size(); ++j)
-            {
-                Rectangle enemyCenter = {   this->_enemies.at(j)->getBoundingBox().getCenterX() - 3,
-                                            this->_enemies.at(j)->getBoundingBox().getTop(),
-                                            6,
-                                            this->_enemies.at(j)->getBoundingBox().getTop(),};
-
-                if(this->_projectiles.at(i)->getBoundingBox().collidesWith( enemyCenter ))
-                {
-                    this->_enemies.at(j)->handleProjectileCollision( this->_projectiles.at(i)->getDamage() );
-                    this->_projectiles.at(i)->handleEnemyCollision();
-
-                    if(this->_projectiles.at(i)->shallBeDestroyed())
-                    {
-                        delete this->_projectiles.at(i);
-                        this->_projectiles.at(i) = 0;
-                        this->_projectiles.erase(this->_projectiles.begin() + i);
-                        --i;
-                    }
-                }
-            }
         }
     }
 
-    //Loop over enemies
-    for(int i = 0; i < this->_enemies.size(); ++i)
+    for(int i = 0; i < this->_enemyProjectiles.size(); ++i)
     {
-        this->_enemies.at(i)->update(elapsedTime);
+        Projectile* curEnmyProj = this->_enemyProjectiles.at(i);
+        curEnmyProj->update(elapsedTime, &this->_enemies);
 
-        if(this->_enemies.at(i)->getCurrentAnimation() == "AttackRight")
+        int projCenter = curEnmyProj->getBoundingBox().getCenterX();
+         //Loop over walls to check if there's a wall directly in front of enemy
+        for(int j = 0; j < this->_walls.size(); ++j)
         {
-            bool stopAttacking = true;
-            //Check to make sure there's a tower directly in front of enemy
-            for(int j = 0; j < this->_towers.size(); ++j)
+            int left = this->_walls.at(j).getLeft();
+            int right = this->_walls.at(j).getRight();
+
+            if(projCenter >= left && projCenter < right)
             {
-                int left = this->_towers.at(j)->getBoundingBox().getLeft();
-                int right = this->_towers.at(j)->getBoundingBox().getRight();
-                int bottom = this->_towers.at(j)->getBoundingBox().getBottom();
-
-                int enemyRight = this->_enemies.at(i)->getBoundingBox().getRight();
-                int enemyBottom = this->_enemies.at(i)->getBoundingBox().getBottom();
-
-                if(enemyRight >= left && enemyRight < right && enemyBottom == bottom)
-                {
-                    //Found a tower directly in front of enemy
-                    stopAttacking = false;
-                    break;
-                }
-            }
-
-            //If enemy is not in front of a tower, resume walking
-            if(stopAttacking)
-            {
-                this->_enemies.at(i)->setSpeed(0.05, 0);
-                this->_enemies.at(i)->playAnimation("WalkRight");
+                curEnmyProj->handleWallCollision(*this);
+                curEnmyProj->setDestroy(true);
             }
         }
 
-        if(this->_enemies.at(i)->getCurrentHealth() <= 0)
+        if(curEnmyProj->shallBeDestroyed())
         {
-            delete this->_enemies.at(i);
-            this->_enemies.at(i) = 0;
-            this->_enemies.erase(this->_enemies.begin() + i);
+            delete this->_enemyProjectiles.at(i);
+            _enemyProjectiles.at(i) = nullptr;
+            this->_enemyProjectiles.erase(this->_enemyProjectiles.begin() + i);
+            curEnmyProj = nullptr;
             --i;
         }
     }
@@ -516,8 +611,22 @@ void Level::draw(Graphics& graphics)
 
     for(int i = 0; i < this->_towers.size(); ++i)
     {
-        this->_towers.at(i)->draw(graphics);
+        if(this->_towers.at(i) != nullptr)
+        {
+            this->_towers.at(i)->draw(graphics);
+        }
     }
+
+    for(int i = 0; i < this->_enemyProjectiles.size(); ++i)
+    {
+        this->_enemyProjectiles.at(i)->draw(graphics);
+    }
+
+    for(int i = 0; i < this->_doors.size(); ++i)
+    {
+        this->_doors.at(i).draw(graphics, this->_doors.at(i).getX(), this->_doors.at(i).getY());
+    }
+
 }
 
 void Level::addTower(Tower *tower)
@@ -535,18 +644,9 @@ void Level::addEnemy(Enemy *enemy)
     this->_enemies.push_back(enemy);
 }
 
-std::vector<Enemy*> Level::checkEnemyCollisions(const Rectangle &other)
+void Level::addEnemyProjectile(Projectile *projectile)
 {
-    std::vector<Enemy*> others;
-    for(int i = 0; i < this->_enemies.size(); ++i)
-    {
-        if(this->_enemies.at(i)->getBoundingBox().collidesWith(other))
-        {
-            others.push_back(this->_enemies.at(i));
-        }
-    }
-
-    return others;
+    this->_enemyProjectiles.push_back(projectile);
 }
 
 void Level::deleteTower(int index)
@@ -558,23 +658,96 @@ void Level::deleteTower(int index)
     }
 }
 
-Tower* Level::getTowerAtMouse(int mouseX, int mouseY, int* index)
+Tower** Level::getTowerAtMouse(int mouseX, int mouseY, int* index)
 {
     *index = -1;
     for(int i = 0; i < this->_towers.size(); ++i)
     {
-        if(this->_towers.at(i)->pointCollides(mouseX, mouseY))
+        if(this->_towers.at(i) != nullptr && this->_towers.at(i)->pointCollides(mouseX, mouseY))
         {
             *index = i;
-            return this->_towers.at(i);
+            return &this->_towers.at(i);
         }
     }
 
     return nullptr;
 }
 
-const Vector2 Level::getEnemySpawnPoint() const
+const std::vector<Rectangle> Level::getFloors() const
 {
-    return this->_enemySpawnPoint;
+    return this->_floors;
 }
 
+const Vector2 Level::getSize() const
+{
+    return this->_size;
+}
+
+const int Level::getPlayerMoney() const
+{
+    return this->_money;
+}
+
+void Level::reduceMoney(int price)
+{
+    this->_money -= price;
+}
+
+void Level::increaseMoney(int value)
+{
+    this->_money += value;
+}
+
+const int Level::getPlayerHealth() const
+{
+    return this->_health;
+}
+
+void Level::reduceHealth(int dmg)
+{
+    this->_health -= dmg;
+
+    if(this->_health < 0)
+    {
+        this->_health = 0;
+    }
+}
+
+bool Level::hasEnemies()
+{
+    return (this->_enemies.size() > 0);
+}
+
+void Level::freeMemory()
+{
+    for(int i = 0; i < this->_enemies.size(); ++i)
+    {
+        delete this->_enemies.at(i);
+        this->_enemies.at(i) = nullptr;
+    }
+    this->_enemies.clear();
+
+    for(int i = 0; i < this->_towers.size(); ++i)
+    {
+        if(this->_towers.at(i) != nullptr)
+        {
+            delete this->_towers.at(i);
+            this->_towers.at(i) = nullptr;
+        }
+    }
+    this->_towers.clear();
+
+    for(int i = 0; i < this->_projectiles.size(); ++i)
+    {
+        delete this->_projectiles.at(i);
+        this->_projectiles.at(i) = nullptr;
+    }
+    this->_projectiles.clear();
+
+    for(int i = 0; i < this->_enemyProjectiles.size(); ++i)
+    {
+        delete this->_enemyProjectiles.at(i);
+        this->_enemyProjectiles.at(i) = nullptr;
+    }
+    this->_enemyProjectiles.clear();
+}

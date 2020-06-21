@@ -108,6 +108,16 @@ int Tower::getPrice()
     return this->_price;
 }
 
+void Tower::setFloor(int floor)
+{
+    this->_floor = floor;
+}
+
+int Tower::getFloor()
+{
+    return this->_floor;
+}
+
 //BulletTower class
 
 BulletTower::BulletTower()
@@ -116,9 +126,9 @@ BulletTower::BulletTower()
 }
 
 BulletTower::BulletTower(Graphics &graphics, Vector2 spawnPoint)
-    :   Tower(graphics, "content/sprites/bulletTower.png", 0, 0, 16, 16, spawnPoint, 100, 5)
+    :   Tower(graphics, "content/sprites/bulletTower.png", 0, 0, 16, 16, spawnPoint, 100, 10)
 {
-    this->_fireCoolDown = 1000;
+    this->_fireCoolDown = 2000;
     this->_lastFireTime = -1;
     this->_price = 100;
 
@@ -166,7 +176,7 @@ std::pair< TowerMenuItem*, TowerMenuItem* > BulletTower::getMenuItems(Graphics &
 {
     //Memory leak
     TowerMenuItem* from = new TowerMenuItem("bulletStatic", 0, graphics, 58, 3, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
-    TowerMenuItem* to = new TowerMenuItem("bulletUpgrade", 150, graphics, 142, 3, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+    TowerMenuItem* to = new TowerMenuItem("bulletUpgrade", 220, graphics, 142, 3, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
 
     return std::make_pair( from, to );
 }
@@ -179,9 +189,9 @@ RocketTower::RocketTower()
 }
 
 RocketTower::RocketTower(Graphics &graphics, Vector2 spawnPoint)
-    :   Tower(graphics, "content/sprites/rocketTower.png", 0, 0, 16, 16, spawnPoint, 100, 5)
+    :   Tower(graphics, "content/sprites/rocketTower.png", 0, 0, 16, 16, spawnPoint, 100, 10)
 {
-    this->_fireCoolDown = 2000;
+    this->_fireCoolDown = 3000;
     this->_lastFireTime = -1;
     this->_price = 250;
 
@@ -216,7 +226,7 @@ Projectile* RocketTower::fireProjectile(Graphics &graphics, int elapsedTime)
     if(( _lastFireTime > _fireCoolDown || _lastFireTime < 0 ) && !this->_dragged)
     {
         _lastFireTime = 0;
-        return new Rocket(graphics, Vector2( this->_x + 12, this->_y + 6 ));
+        return new Rocket(graphics, Vector2( this->_x + 12, this->_y + 6 ), this->getBoundingBox().getBottom());
     }
     else
     {
@@ -228,7 +238,7 @@ Projectile* RocketTower::fireProjectile(Graphics &graphics, int elapsedTime)
 std::pair< TowerMenuItem*, TowerMenuItem* > RocketTower::getMenuItems(Graphics &graphics)
 {
     TowerMenuItem* from = new TowerMenuItem("rocketStatic", 0, graphics, 58, 45, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
-    TowerMenuItem* to = new TowerMenuItem("rocketUpgrade", 100, graphics, 142, 45, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+    TowerMenuItem* to = new TowerMenuItem("rocketUpgrade", 525, graphics, 142, 45, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
 
     return std::make_pair( from, to );
 }
@@ -241,13 +251,13 @@ SniperTower::SniperTower()
 }
 
 SniperTower::SniperTower(Graphics &graphics, Vector2 spawnPoint)
-    :   Tower(graphics, "content/sprites/sniperTower.png", 0, 0, 16, 16, spawnPoint, 100, 5),
+    :   Tower(graphics, "content/sprites/sniperTower.png", 0, 0, 16, 16, spawnPoint, 100, 10),
         _barrelX( spawnPoint.x + 4),
         _barrelY( spawnPoint.y + 7),
         _damage(1),
         _laserLifespan(0)
 {
-    this->_fireCoolDown = 1000;
+    this->_fireCoolDown = 5000;
     this->_lastFireTime = 0;
     this->_price = 75;
     this->_canPlaceOnWall = true;
@@ -295,18 +305,42 @@ void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*
     //to face left by default
     int targetX = centerX - 1;
     int targetY = centerY;
-    if(!this->_dragged && enemies->size() > 0 && enemies->at(0)->getBoundingBox().getRight() < this->_x)
-    {
-        targetX = enemies->at(0)->getBoundingBox().getCenterX();
-        targetY = enemies->at(0)->getBoundingBox().getCenterY();
+    Enemy* targetEnemy = nullptr;
 
+    if(!this->_dragged && enemies != nullptr && enemies->size() != 0)
+    {
+        //Target the first enemy on the same floor as the tower that created this
+        for(int i = 0; i < enemies->size(); ++i)
+        {
+            targetEnemy = enemies->at(i);
+            if(targetEnemy->getBoundingBox().getBottom() == this->_floor && targetEnemy->getBoundingBox().getRight() <= this->getBoundingBox().getRight())
+            {
+                break;
+            }
+        }
+
+        if(targetEnemy != nullptr && targetEnemy->getBoundingBox().getBottom() == this->_floor && targetEnemy->getBoundingBox().getRight() <= this->getBoundingBox().getRight())
+        {
+            targetX = targetEnemy->getBoundingBox().getCenterX();
+            targetY = targetEnemy->getBoundingBox().getCenterY();
+        }
+        else
+        {
+            targetEnemy = nullptr;
+            int targetX = centerX - 1;
+            int targetY = centerY;
+        }
+    }
+
+    if(targetEnemy != nullptr)
+    {
         if( this->_lastFireTime > this->_fireCoolDown )
         {
             this->_lastFireTime = 0;
             this->_laserLifespan = 200;
 
             //Deal _damage to enemy
-            enemies->at(0)->reduceHealth(this->_damage);
+            targetEnemy->reduceHealth(this->_damage);
         }
         else
         {
@@ -326,7 +360,6 @@ void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*
     }
 
     float angleToTarget = functions::getAngle(centerX, centerY, targetX, targetY);
-
     if(angleToTarget > 175 || angleToTarget < -175 || abs(angleToTarget) < 90)
     {
         this->_barrelX = this->_x + 8;
@@ -375,7 +408,7 @@ void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*
         this->_barrelY = this->_y + 28;
         this->playAnimation("Down45");
     }
-    else if(angleToTarget >= -115 && angleToTarget < -90)
+    else if(angleToTarget >= -115 && angleToTarget <= -90)
     {
         this->_barrelX = this->_x + 14;
         this->_barrelY = this->_y + 32;
@@ -391,6 +424,7 @@ void SniperTower::update(int elapsedTime, Graphics &graphics, std::vector<Enemy*
     else
     {
         this->_sourceRect.h = 16;
+        this->playAnimation( this->_currentAnimation );
     }
 
     Sprite::update();
@@ -409,7 +443,7 @@ Projectile* SniperTower::fireProjectile(Graphics &graphics, int elapsedTime)
 std::pair< TowerMenuItem*, TowerMenuItem* > SniperTower::getMenuItems(Graphics &graphics)
 {
     TowerMenuItem* from = new TowerMenuItem("sniperStatic", 0, graphics, 58, 87, 40, 40, Vector2(200, globals::GAME_VIEWPORT_H), false);
-    TowerMenuItem* to = new TowerMenuItem("sniperUpgrade", 100, graphics, 142, 87, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
+    TowerMenuItem* to = new TowerMenuItem("sniperUpgrade", 175, graphics, 142, 87, 40, 40, Vector2(475, globals::GAME_VIEWPORT_H), true);
 
     return std::make_pair( from, to );
 }
@@ -426,9 +460,12 @@ BulletTowerII::BulletTowerII()
 BulletTowerII::BulletTowerII(Graphics &graphics, Vector2 spawnPoint)
     :   BulletTower(graphics, spawnPoint)
 {
-    this->_fireCoolDown = 500;
+    this->_maxHealth = 20;
+    this->_currentHealth = 20;
+
+    this->_fireCoolDown = 1000;
     this->_lastFireTime = -1;
-    this->_price = 150;
+    this->_price = 220;
 
     this->resetAnimations();
     this->addAnimation(1, 34, 0, "FaceLeft", 16, 16, Vector2(0, 0));
@@ -471,9 +508,12 @@ RocketTowerII::RocketTowerII()
 RocketTowerII::RocketTowerII(Graphics &graphics, Vector2 spawnPoint)
     :   RocketTower(graphics, spawnPoint)
 {
-    this->_fireCoolDown = 1000;
+    this->_maxHealth = 20;
+    this->_currentHealth = 20;
+
+    this->_fireCoolDown = 1800;
     this->_lastFireTime = -1;
-    this->_price = 350;
+    this->_price = 525;
 
     this->resetAnimations();
     this->addAnimation(1, 23, 33, "FaceLeft", 16, 16, Vector2(0, 0));
@@ -499,10 +539,13 @@ SniperTowerII::SniperTowerII()
 SniperTowerII::SniperTowerII(Graphics &graphics, Vector2 spawnPoint)
     :   SniperTower(graphics, spawnPoint)
 {
+    this->_maxHealth = 20;
+    this->_currentHealth = 20;
+
     this->_damage = 3;
-    this->_fireCoolDown = 1000;
+    this->_fireCoolDown = 5000;
     this->_lastFireTime = 0;
-    this->_price = 75;
+    this->_price = 175;
     this->_canPlaceOnWall = true;
 
     //addAnimation is supposed to replace animations with the same name, but for some reason it doesn't.

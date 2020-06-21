@@ -1,9 +1,7 @@
 #include "projectile.h"
 #include "enemy.h"
-#include <iostream>
-#include <math.h>
-
-#define PI 3.14159265
+#include "tower.h"
+#include "level.h"
 
 Projectile::Projectile()
 {
@@ -16,7 +14,7 @@ Projectile::Projectile(Graphics &graphics, std::string filepath, int sourceX, in
         _dx(0),
         _dy(0),
         _direction(NONE),
-        _destroy(false)
+        _dealDamage(true)
 {
 
 }
@@ -31,12 +29,12 @@ void Projectile::draw(Graphics &graphics)
     AnimatedSprite::draw(graphics, this->_x, this->_y);
 }
 
-void Projectile::update(float elapsedTime, std::vector<Enemy*> *enemies)
+void Projectile::update(int elapsedTime, std::vector<Enemy*> *enemies)
 {
     AnimatedSprite::update(elapsedTime);
 }
 
-void Projectile::moveDirection(float elapsedTime)
+void Projectile::moveDirection(int elapsedTime)
 {
     //Move by dx
     this->_x += this->_dx * elapsedTime;
@@ -47,6 +45,21 @@ void Projectile::moveDirection(float elapsedTime)
 void Projectile::setDirection(Direction direction)
 {
     this->_direction = direction;
+}
+
+void Projectile::handleEnemyCollision(Enemy* enemy)
+{
+
+}
+
+void Projectile::handleTowerCollision(Tower* tower)
+{
+
+}
+
+void Projectile::handleWallCollision(Level &level)
+{
+
 }
 
 int Projectile::getDamage()
@@ -64,39 +77,40 @@ Bullet::Bullet()
 Bullet::Bullet(Graphics &graphics, Vector2 spawnPoint)
     :   Projectile(graphics, "content/sprites/bulletTower.png", 2, 18, 4, 3, spawnPoint, 100)
 {
+    this->_dealDamage = true;
     this->_damage = 1;
     this->_dx = -0.1;
     this->_dy = 0;
     this->_direction = LEFT;
 
-    this->setupAnimation();
+    this->addAnimation(1, 2, 18, "MoveLeft", 4, 3, Vector2(0, 0));
     this->playAnimation("MoveLeft");
 }
 
-Bullet::~Bullet()
+void Bullet::update(int elapsedTime, std::vector<Enemy*> *enemies)
 {
+    if(!this->_dealDamage)
+    {
+        this->_damage = 0;
+    }
 
-}
+    if(this->_x < 32)
+    {
+        this->_destroy = true;
+    }
 
-void Bullet::animationDone(std::string currentAnimation)
-{
-
-}
-
-void Bullet::setupAnimation()
-{
-    this->addAnimation(1, 2, 18, "MoveLeft", 4, 3, Vector2(0, 0));
-}
-
-void Bullet::update(float elapsedTime, std::vector<Enemy*> *enemies)
-{
     this->moveDirection(elapsedTime);
     AnimatedSprite::update(elapsedTime);
 }
 
-void Bullet::handleEnemyCollision()
+void Bullet::handleEnemyCollision(Enemy* enemy)
 {
-    this->_destroy = true;
+    this->_dealDamage = false;
+
+    if(enemy->getCurrentHealth() <= 0 || this->_x <= enemy->getBoundingBox().getCenterX())
+    {
+        this->_destroy = true;
+    }
 }
 
 void Bullet::setDirection(Direction direction)
@@ -123,49 +137,56 @@ Rocket::Rocket()
 
 }
 
-Rocket::Rocket(Graphics &graphics, Vector2 spawnPoint)
+Rocket::Rocket(Graphics &graphics, Vector2 spawnPoint, int floor)
     :   Projectile(graphics, "content/sprites/rocketTower.png", 9, 19, 4, 6, spawnPoint, 75),
     _targetX(-1),
     _targetY(-1),
-    _dealDamage(true),
     _lastDirectionChangeTime(0),
-    _directionChangeCooldown(150)
+    _directionChangeCooldown(150),
+    _floor(floor)
 {
     this->_damage = 0;
+    this->_dealDamage = true;
     this->_dx = 0;
     this->_dy = -0.1;
     this->_direction = UP;
 
-    this->setupAnimation();
+    this->addAnimation(1, 2, 20, "MoveUpLeft", 5, 5, Vector2(0, 0));
+    this->addAnimation(1, 9, 19, "MoveUp", 3, 6, Vector2(0, 0));
+    this->addAnimation(1, 14, 20, "MoveUpRight", 5, 5, Vector2(0, 0));
+    this->addAnimation(1, 14, 26, "MoveRight", 6, 3, Vector2(0, 0));
+    this->addAnimation(1, 14, 30, "MoveDownRight", 5, 5, Vector2(0, 0));
+    this->addAnimation(1, 9, 30, "MoveDown", 3, 6, Vector2(0, 0));
+    this->addAnimation(1, 2, 30, "MoveDownLeft", 5, 5, Vector2(0, 0));
+    this->addAnimation(1, 1, 26, "MoveLeft", 6, 3, Vector2(0, 0));
+    this->addAnimation(5, 17, 1, "Explode", 17, 17, Vector2(-9, -9));
+
     this->playAnimation("MoveUp");
 }
 
-float Rocket::getAngleToTarget()
+void Rocket::update(int elapsedTime, std::vector<Enemy*> *enemies)
 {
-    //atan2 returns the angle in radians of the line from (0, 0) to (x, y) from the x-axis.
-    //The return value is in the interval [-pi, pi], which means if the target is below the
-    //rocket, atan2 will return a negative angle.
-    //To get the angle relative to the projectile, the projectile must act as the origin from
-    //which the arctan is measured. This means the target coordinates must be translated by
-    //(-this->_x, -this->_y).
-    //Also, the arguments for atan2 are atan2(y, x)
-
-    float y = this->_targetY - this->_y;
-    float x = this->_targetX - this->_x;
-
-    //Because the SDL coordinate system is upside down (higher y value -> lower on the screen),
-    //the angle will have the wrong sign.
-    return -1 * atan2(y, x);
-}
-
-void Rocket::update(float elapsedTime, std::vector<Enemy*> *enemies)
-{
-    //Rocket should only do damage on sprite 4 of "Explode" (which has the circle with the biggest radius)
-    //and only for 1 frame.
-    if(this->_currentAnimation == "Explode" && this->getFrameIndex() == 4 && this->_dealDamage)
+   if(this->_currentAnimation == "Explode")
     {
-        this->_damage = 5;
-        this->_dealDamage = false;
+        //Rocket should only do damage on sprite 4 of "Explode" (which has the circle with the biggest radius)
+        //and only for 1 frame
+        if(this->getFrameIndex() == 4)
+        {
+            if(this->_damage == 0)
+            {
+                this->_damage = 2;
+            }
+            else if(this->_damage == 2)
+            {
+                this->_damage = 0;
+                this->_dealDamage = false;
+            }
+        }
+        //Explosion animation is finished, rocket can now be deleted
+        else if(this->_animationDone)
+        {
+            this->_destroy = true;
+        }
     }
     else
     {
@@ -174,11 +195,36 @@ void Rocket::update(float elapsedTime, std::vector<Enemy*> *enemies)
 
     if(enemies != nullptr && enemies->size() != 0)
     {
-        this->_targetX = enemies->at(0)->getBoundingBox().getCenterX();
-        this->_targetY = enemies->at(0)->getBoundingBox().getCenterY();
+        //Target the first enemy on the same floor as the tower that created this
+        Enemy* targetEnemy = nullptr;
+        for(int i = 0; i < enemies->size(); ++i)
+        {
+            targetEnemy = enemies->at(i);
+            if(targetEnemy->getBoundingBox().getBottom() == this->_floor)
+            {
+                break;
+            }
+        }
+
+        if(targetEnemy != nullptr && targetEnemy->getBoundingBox().getBottom() == this->_floor)
+        {
+            this->_targetX = targetEnemy->getBoundingBox().getCenterX();
+            this->_targetY = targetEnemy->getBoundingBox().getCenterY();
+        }
+        else
+        {
+            this->setDirection(NONE);
+        }
     }
     else
     {
+        //If there aren't any enemies on screen, self destruct
+        this->setDirection(NONE);
+    }
+
+    if(this->_x < 32)
+    {
+        //If rocket somehow hits wall, self destruct
         this->setDirection(NONE);
     }
 
@@ -190,15 +236,15 @@ void Rocket::update(float elapsedTime, std::vector<Enemy*> *enemies)
     {
         _lastDirectionChangeTime = 0;
 
-        //If rocket is within 3 pixels of target, explode. Eventually replace with timer? Explode after a certain time?
-        if((pow(this->_targetX - this->_x, 2) + pow(this->_targetY - this->_y, 2)) <= 9 && false)
+        //If rocket is within 3 pixels of target, explode.
+        if((pow(this->_targetX - this->_x, 2) + pow(this->_targetY - this->_y, 2)) <= 9 )
         {
             this->setDirection(NONE);
         }
         //Otherwise, get angle to target in degrees
         else
         {
-            float angleToTarget = this->getAngleToTarget() * (180 / PI);
+            float angleToTarget = functions::getAngle(this->_x, this->_y, this->_targetX, this->_targetY);
 
             if(angleToTarget >= -30 && angleToTarget < 30)
             {
@@ -239,30 +285,9 @@ void Rocket::update(float elapsedTime, std::vector<Enemy*> *enemies)
     AnimatedSprite::update(elapsedTime);
 }
 
-void Rocket::handleEnemyCollision()
+void Rocket::handleEnemyCollision(Enemy* enemy)
 {
     this->setDirection(NONE);
-}
-
-void Rocket::animationDone(std::string currentAnimation)
-{
-    if(currentAnimation == "Explode")
-    {
-        this->_destroy = true;
-    }
-}
-
-void Rocket::setupAnimation()
-{
-    this->addAnimation(1, 2, 20, "MoveUpLeft", 5, 5, Vector2(0, 0));
-    this->addAnimation(1, 9, 19, "MoveUp", 3, 6, Vector2(0, 0));
-    this->addAnimation(1, 14, 20, "MoveUpRight", 5, 5, Vector2(0, 0));
-    this->addAnimation(1, 14, 26, "MoveRight", 6, 3, Vector2(0, 0));
-    this->addAnimation(1, 14, 30, "MoveDownRight", 5, 5, Vector2(0, 0));
-    this->addAnimation(1, 9, 30, "MoveDown", 3, 6, Vector2(0, 0));
-    this->addAnimation(1, 2, 30, "MoveDownLeft", 5, 5, Vector2(0, 0));
-    this->addAnimation(1, 1, 26, "MoveLeft", 6, 3, Vector2(0, 0));
-    this->addAnimation(5, 17, 1, "Explode", 17, 17, Vector2(-9, -9));
 }
 
 void Rocket::setDirection(Direction direction)
@@ -332,7 +357,83 @@ void Rocket::setDirection(Direction direction)
             this->_dy = 0;
             this->_sourceRect.w = 17;
             this->_sourceRect.h = 17;
-            this->playAnimation("Explode", true); //Play animation once
+            if(this->_currentAnimation != "Explode")
+            {
+                this->playAnimation("Explode");
+            }
             break;
+    }
+}
+
+//Fireball subclass
+
+Fireball::Fireball()
+{
+
+}
+
+Fireball::Fireball(Graphics &graphics, Vector2 spawnPoint)
+    :   Projectile(graphics, "content/sprites/fireEnemy.png", 74, 2, 6, 5, spawnPoint, 100)
+{
+    this->_dealDamage = true;
+    this->_damage = 1;
+    this->_dx = 0.1;
+    this->_dy = 0;
+    this->_direction = RIGHT;
+
+    this->addAnimation(4, 74, 2, "MoveRight", 6, 5, Vector2(0, 0));
+    this->playAnimation("MoveRight");
+}
+
+void Fireball::update(int elapsedTime, std::vector<Enemy*> *enemies)
+{
+    if(!this->_dealDamage)
+    {
+        this->_damage = 0;
+    }
+
+    this->moveDirection(elapsedTime);
+    AnimatedSprite::update(elapsedTime);
+}
+
+void Fireball::handleTowerCollision(Tower* tower)
+{
+    if(this->_dealDamage)
+    {
+        tower->reduceCurrentHealth( this->_damage );
+    }
+
+    this->_dealDamage = false;
+
+    if(tower->getCurrentHealth() <= 0 || this->getBoundingBox().getCenterX() >= tower->getX())
+    {
+        this->_destroy = true;
+    }
+}
+
+void Fireball::handleWallCollision(Level &level)
+{
+    if(this->_dealDamage)
+    {
+       level.reduceHealth(this->_damage);
+    }
+
+    this->_dealDamage = false;
+}
+
+void Fireball::setDirection(Direction direction)
+{
+    this->_direction = direction;
+
+    switch(direction)
+    {
+        case LEFT:
+            this->_dx = -0.1;
+            break;
+        case RIGHT:
+            this->_dx = 0.1;
+            break;
+        default:
+            this->_dx = 0;
     }
 }

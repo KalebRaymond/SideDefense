@@ -3,6 +3,7 @@
 #include "graphics.h"
 #include "input.h"
 #include "tower.h"
+#include "game.h"
 
 MenuItem::MenuItem()
 {
@@ -20,7 +21,7 @@ MenuItem::MenuItem(std::string name, Graphics &graphics, int sourceX, int source
 
 }
 
-void MenuItem::update(int elapsedTime, Input &input)
+void MenuItem::update(int elapsedTime, Input &input, Game &game)
 {
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
@@ -28,7 +29,7 @@ void MenuItem::update(int elapsedTime, Input &input)
 
     //The music and sfx icons should toggle on or off, but the save icon should
     //only have the pressed-down sprite while the left mouse button is held down
-    if( _interactable && mousePosition.collidesWith(this->getBoundingBox()) )
+    if( this->_interactable && mousePosition.collidesWith(this->getBoundingBox()) )
     {
         if(!this->_clicked)
         {
@@ -38,6 +39,16 @@ void MenuItem::update(int elapsedTime, Input &input)
         if(this->_name == "save" && input.getLeftClick())
         {
             this->onClick();
+        }
+
+        if(this->_name == "sell" && input.getLeftReleased())
+        {
+            Tower** curTower = game.getSelectedTower();
+            //Set currently selected tower to be deleted on next frame
+            (*curTower)->setDestroy(true);
+            game.getCurrentLevel()->increaseMoney( (int)(ceil( (*curTower)->getPrice() * 0.8 )) );
+            //Set pointer to currently selected tower to null
+            game.nullifySelectedTower();
         }
 
         if( (this->_name == "music" || this->_name == "sfx") && input.getLeftReleased() )
@@ -52,10 +63,13 @@ void MenuItem::update(int elapsedTime, Input &input)
         {
             setSprite(this->_name, 3, this->_sourceRect.y, 16, 16);
         }
-
-        if(( this->_name == "music" || this->_name == "sfx") && !this->_clicked)
+        else if(( this->_name == "music" || this->_name == "sfx") && !this->_clicked)
         {
             setSprite(this->_name, 3, this->_sourceRect.y, 16, 16);
+        }
+        else if(this->_name == "sell")
+        {
+            setSprite(this->_name, 4, 89, 26, 7);
         }
     }
 
@@ -85,7 +99,15 @@ void MenuItem::onHover()
 {
     if(this->_name != "hp" && this->_name != "cash")
     {
-        setSprite(this->_name, 21, this->_sourceRect.y, 16, 16);
+        if(this->_name == "sell")
+        {
+            setSprite(this->_name, 4, 96, 26, 7);
+        }
+        else
+        {
+            setSprite(this->_name, 21, this->_sourceRect.y, 16, 16);
+        }
+
     }
 }
 
@@ -124,8 +146,10 @@ TowerMenuItem::TowerMenuItem(std::string name, int price, Graphics &graphics, in
 
 }
 
-void TowerMenuItem::update(int elapsedTime, Input &input)
+void TowerMenuItem::update(int elapsedTime, Input &input, Game &game)
 {
+    this->_clicked = false;
+
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
     Rectangle mousePosition = {mouseX, mouseY, 0, 0};
@@ -156,17 +180,32 @@ Tower* TowerMenuItem::createTower(Graphics &graphics, int mouseX, int mouseY, in
 {
     Tower* tower = nullptr;
 
-    if(this->_name == "bulletTower" && money >= 100)
+    if(money >= this->_price)
     {
-       tower = new BulletTower(graphics, Vector2(mouseX, mouseY));
-    }
-    else if(this->_name == "rocketTower" && money >= 250)
-    {
-       tower = new RocketTower(graphics, Vector2(mouseX, mouseY));
-    }
-    else if(this->_name == "sniperTower" && money >= 75)
-    {
-       tower = new SniperTower(graphics, Vector2(mouseX, mouseY));
+        if(this->_name == "bulletTower")
+        {
+            tower = new BulletTower(graphics, Vector2(mouseX, mouseY));
+        }
+        else if(this->_name == "bulletUpgrade")
+        {
+            tower = new BulletTowerII(graphics, Vector2(mouseX, mouseY));
+        }
+        else if(this->_name == "rocketTower")
+        {
+            tower = new RocketTower(graphics, Vector2(mouseX, mouseY));
+        }
+        else if(this->_name == "rocketUpgrade")
+        {
+            tower = new RocketTowerII(graphics, Vector2(mouseX, mouseY));
+        }
+        else if(this->_name == "sniperTower")
+        {
+            tower = new SniperTower(graphics, Vector2(mouseX, mouseY));
+        }
+        else if(this->_name == "sniperUpgrade")
+        {
+            tower = new SniperTowerII(graphics, Vector2(mouseX, mouseY));
+        }
     }
 
     if(tower != nullptr)
