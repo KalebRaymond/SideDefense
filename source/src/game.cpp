@@ -26,7 +26,7 @@ Game::Game()
 
 Game::~Game()
 {
-    //SDL_Quit();
+    SDL_Quit();
     TTF_Quit();
 }
 
