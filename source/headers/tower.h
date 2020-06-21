@@ -22,9 +22,7 @@ class Tower : public AnimatedSprite
         /*  Returns nullptr here. In derived classes, fireProjectile() increments
         *   _lastFireTime by elapsedTime. If _lastFireTime > _fireCoolDown and this
         *   tower is not being dragged, returns a pointer to a projectile subclass
-        *   corresponding to the type of the tower. Otherwise, second will be an
-        *   invisible TowerMenuItem with zero width and height (because I can't return
-        *   an std::pair of pointers when one of them is null or else it crashes...)
+        *   corresponding to the type of the tower.
         */
         virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime) = 0;
 
@@ -40,7 +38,7 @@ class Tower : public AnimatedSprite
         /*  getMenuItems() returns two TowerMenuItems. The first has a picture of
         *   the tower calling this function, and is uninteractable. The second has
         *   a picture of the tower's next upgrade. If the tower has no upgrade,
-        *   the second TowerMenuItem will be nullptr
+        *   the second TowerMenuItem will be invisible and uninteractable.
         */
         virtual std::pair< TowerMenuItem*, TowerMenuItem* > getMenuItems(Graphics &graphics) = 0;
 
@@ -52,10 +50,13 @@ class Tower : public AnimatedSprite
         void reduceCurrentHealth(int dmg);
         int getCurrentHealth();
         int getPrice();
+        void setFloor(int floor);
+        int getFloor();
 
     protected:
         int _maxHealth;
         int _currentHealth;
+        int _floor;
 
         //_fireCoolDown and _lastFireTime are measured in milliseconds
         int _fireCoolDown;

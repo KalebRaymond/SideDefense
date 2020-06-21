@@ -8,6 +8,7 @@
 class Graphics;
 class Tower;
 class Projectile;
+class Level;
 
 class Enemy : public AnimatedSprite
 {
@@ -22,18 +23,31 @@ class Enemy : public AnimatedSprite
 
         const inline int getMaxHealth() const { return this->_maxHealth; }
         const inline int getCurrentHealth() const { return this->_currentHealth; }
+        const inline int getValue() const { return this->_value; }
         void setSpeed(float dx, float _dy);
 
         void reduceHealth(int dmg);
-        /*  handleBulletCollision() decreases _currentHealth by p->_damage. As of right now
+
+        /*  handleProjectileCollision() decreases _currentHealth by p->_damage. As of right now
         *   enemies don't do anything special when hit depending on their subclass type,
         *   but if they do in the future, this needs to be a virtual void function.
         */
         void handleProjectileCollision(Projectile* p);
 
-        /* attack will at the very least reduce tower's _currentHealth by this->_damage
+        /*  handleWallCollision() reduces player's health by this->_damage.
         */
-        virtual void attack(Tower* tower) = 0;
+        void handleWallCollision(Level &level);
+
+
+        /* attack reduces tower's _currentHealth by this->_damage
+        */
+        void attack(Tower* tower);
+
+        /*  Returns nullptr here. In derived classes, fireProjectile() increments
+        *   _lastFireTime by elapsedTime. If _lastFireTime > _fireCoolDown, a pointer
+        *   to a projectile subclass will be returned.
+        */
+        virtual Projectile* fireProjectile(Graphics &graphics, int elapsedTime) = 0;
 
     protected:
         Direction _direction;
@@ -41,6 +55,13 @@ class Enemy : public AnimatedSprite
         int _maxHealth;
         int _currentHealth;
         int _damage;
+        int _value;
+
+        //_fireCoolDown and _lastFireTime are measured in milliseconds
+        int _fireCoolDown;
+        int _lastFireTime;
+
+        bool _dealDamage;
 };
 
 class BasicEnemy : public Enemy
@@ -49,12 +70,9 @@ class BasicEnemy : public Enemy
         BasicEnemy();
         BasicEnemy(Graphics &graphics, int spawnX, int spawnY);
 
-        void update(int elapsedTime);
-        void draw(Graphics &graphics);
-
-        void moveDirection(int elapsedTime);
-
         void attack(Tower* tower);
+
+        Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
 };
 
 class ToughEnemy : public Enemy
@@ -63,12 +81,25 @@ class ToughEnemy : public Enemy
         ToughEnemy();
         ToughEnemy(Graphics &graphics, int spawnX, int spawnY);
 
-        void update(int elapsedTime);
-        void draw(Graphics &graphics);
+        void attack(Tower* tower);
 
-        void moveDirection(int elapsedTime);
+        Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+};
+
+class FireEnemy : public Enemy
+{
+    public:
+        FireEnemy();
+        FireEnemy(Graphics &graphics, int spawnX, int spawnY);
+
+        void update(int elapsedTime);
 
         void attack(Tower* tower);
+
+        Projectile* fireProjectile(Graphics &graphics, int elapsedTime);
+
+    private:
+        bool _canShoot;
 };
 
 #endif // ENEMY_H

@@ -7,6 +7,7 @@
 class Graphics;
 class Input;
 class Tower;
+class Game;
 
 class MenuItem : public Sprite
 {
@@ -14,7 +15,7 @@ class MenuItem : public Sprite
         MenuItem();
         MenuItem(std::string name, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location, bool interactable);
 
-        virtual void update(int elapsedTime, Input &input);
+        virtual void update(int elapsedTime, Input &input, Game &game);
         void draw(Graphics &graphics, int x, int y);
 
         void setSprite(std::string name, int sourceX, int sourceY, int width, int height);
@@ -58,7 +59,7 @@ class TowerMenuItem : public MenuItem
         TowerMenuItem();
         TowerMenuItem(std::string name, int price, Graphics &graphics, int sourceX, int sourceY, int width, int height, Vector2 location, bool interactable);
 
-        void update(int elapsedTime, Input &input);
+        void update(int elapsedTime, Input &input, Game &game);
         void onHover();
 
         const int inline getPrice() const

@@ -22,9 +22,19 @@ class Game
         int mainMenuLoop(Graphics &graphics);
 
         /*  gameLoop
-        *   Returns 1 on... nothing yet
+        *   Returns 1 on defeating all enemies
+        *   Returns -1 on closing window or pressing esc key
         */
-        int gameLoop(Graphics &graphics);
+        int gameLoop(Graphics &graphics, std::vector< std::pair< int, Enemy* > > &enemySpawnStack, std::string levelName);
+
+        /*  winGameLoop
+        *   Returns -1 on closing window or pressing esc key
+        */
+        int winGameLoop(Graphics &graphics);
+
+        Level* getCurrentLevel();
+        Tower** getSelectedTower();
+        void nullifySelectedTower();
 
     private:
         void draw(Graphics &graphics);
@@ -37,16 +47,17 @@ class Game
         *   executing. Otherwise returns 1.
         */
         int startLevelTransition(Graphics &graphics);
+        int loseLevelTransition(Graphics &graphics);
 
         Level _level;
         Graphics _graphics;
         Menu _menu;
 
-        Tower* _selectedTower;
-        Tower* _towerAtMouse;
-
-        int _money;
-        int _health;
+        /*  _selectedTower and _towerAtMouse both are used to point to
+        *   Tower* pointers located inside this->_level._towers.
+        */
+        Tower** _selectedTower;
+        Tower** _towerAtMouse;
 };
 
 #endif // GAME_H
