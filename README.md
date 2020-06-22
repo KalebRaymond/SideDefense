@@ -2,8 +2,6 @@
 
 A 2D sidescrolling tower defense game built with SDL and Tiled Map Editor. Builds off of [Limeoats's Cavestory Remake](https://github.com/Limeoats/cavestory-development).
 
-bugs & changes:    
-	- Towers fire if enemy is to right of tower (makes sense for rockets...)  
-	- A lot of code can be deleted (BasicEnemy::draw and ToughEnemy::draw do the same thing)  
+[![Full playthrough](http://img.youtube.com/vi/9saWfusLTLE/0.jpg)](http://www.youtube.com/watch?v=9saWfusLTLE)
   
 If you are unable to place a tower after using WASD to move the screen, it's probably due to keyboard ghosting.
