@@ -8,7 +8,7 @@
 
 A 2D sidescrolling tower defense game built with SDL and Tiled Map Editor. Builds off of [Limeoats's Cavestory Remake](https://github.com/Limeoats/cavestory-development).
 
-Image below links to a full playthrough of the game.
+Image below links to a full playthrough of the game on youtube.
 
 [![Full playthrough](http://img.youtube.com/vi/9saWfusLTLE/0.jpg)](http://www.youtube.com/watch?v=9saWfusLTLE)  
 
