@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://www.meetup.com/Angular-Medellin/">
+    <img width=100% src="content/sprites/titleCard.png">
+  </a>
+</p>
+
 # TowerDefense
 
 A 2D sidescrolling tower defense game built with SDL and Tiled Map Editor. Builds off of [Limeoats's Cavestory Remake](https://github.com/Limeoats/cavestory-development).
